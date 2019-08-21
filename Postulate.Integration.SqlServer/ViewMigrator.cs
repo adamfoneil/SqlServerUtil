@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Postulate.Integration.SqlServer
@@ -17,7 +18,7 @@ namespace Postulate.Integration.SqlServer
 
         public async Task MergeAsync<TIdentity>(SqlConnection sourceConnection, DbObject source, SqlConnection destConnection, DbObject dest, IEnumerable<string> keyColumns)
         {
-            var cmd = await SqlServerCmd.FromTableSchemaAsync(destConnection, dest.Schema, dest.Name, keyColumns);
+            var cmd = await SqlServerCmd.FromTableSchemaAsync(destConnection, dest.Schema, dest.Name, keyColumns);            
 
             var data = sourceConnection.QueryTable($"SELECT * FROM [{source.Schema}].[{source.Name}]");
 

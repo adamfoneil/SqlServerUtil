@@ -24,7 +24,7 @@ namespace ConsoleTest
                     //cnRemote.Execute(createTable);
 
                     var vm = new ViewMigrator();
-                    vm.MergeAsync<int>(cnLocal, "bi.AllDocuments", cnRemote, "dbo.AllDocuments", new string[] { "ID" }).Wait();
+                    vm.MergeAsync<int>(cnLocal, "bi.AllDocuments", cnRemote, "dbo.AllDocuments", new string[] { "LibraryID", "Filename" }).Wait();
                 }
             }
         }
