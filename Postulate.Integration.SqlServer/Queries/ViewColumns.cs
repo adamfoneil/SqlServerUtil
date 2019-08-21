@@ -12,7 +12,7 @@ namespace Postulate.Integration.SqlServer.Queries
         public string GetSyntax()
         {
             string sizeText = (Size == -1) ? "max" : Size.ToString();
-            string typeName = (Size > 0) ? $"{DataType}({sizeText})" : DataType;
+            string typeName = (Size != 0) ? $"{DataType}({sizeText})" : DataType;
             string nullable = (AllowNull) ? "NULL" : "NOT NULL";
             return $"[{Name}] {typeName} {nullable}";
         }
