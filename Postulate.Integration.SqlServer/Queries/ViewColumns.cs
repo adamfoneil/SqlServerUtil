@@ -1,6 +1,6 @@
 ﻿using Postulate.Base;
 
-namespace SqlIntegration.Library.Queries
+namespace Postulate.Integration.SqlServer.Queries
 {
     public class ViewColumnsResult
     {
@@ -11,7 +11,7 @@ namespace SqlIntegration.Library.Queries
 
         public string GetSyntax()
         {
-            string sizeText = (Size == -1) ? "max" : string.Empty;
+            string sizeText = (Size == -1) ? "max" : Size.ToString();
             string typeName = (Size > 0) ? $"{DataType}({sizeText})" : DataType;
             string nullable = (AllowNull) ? "NULL" : "NOT NULL";
             return $"[{Name}] {typeName} {nullable}";
