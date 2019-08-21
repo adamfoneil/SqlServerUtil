@@ -16,6 +16,6 @@ namespace Postulate.Integration.SqlServer
             return $"CREATE TABLE [{destSchema}].[{destTable}] (\r\n\t" +
                 string.Join(",\r\n\t", columns.Select(col => col.GetSyntax())) +
                 "\r\n)";
-        }
+        }        
     }
 }

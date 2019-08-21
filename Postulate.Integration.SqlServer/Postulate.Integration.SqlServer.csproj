@@ -5,6 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="AdoUtil.Library" Version="1.0.0" />
     <PackageReference Include="Dapper" Version="1.60.6" />
     <PackageReference Include="Postulate.SqlServer" Version="1.3.14" />
     <PackageReference Include="System.Data.SqlClient" Version="4.6.1" />
