@@ -5,7 +5,9 @@ VisualStudioVersion = 16.0.29123.88
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Postulate.Integration.SqlServer", "Postulate.Integration.SqlServer\Postulate.Integration.SqlServer.csproj", "{3231EC5F-8AC4-46FA-9CE1-25554D3A5D83}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsoleTest", "ConsoleTest\ConsoleTest.csproj", "{E4F8F48D-6177-4588-988D-C2471CEF1007}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ConsoleTest", "ConsoleTest\ConsoleTest.csproj", "{E4F8F48D-6177-4588-988D-C2471CEF1007}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Testing", "Testing\Testing.csproj", "{8E57E801-9F15-4174-9D0B-9E3FD2A6CD4F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,10 @@ Global
 		{E4F8F48D-6177-4588-988D-C2471CEF1007}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E4F8F48D-6177-4588-988D-C2471CEF1007}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E4F8F48D-6177-4588-988D-C2471CEF1007}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8E57E801-9F15-4174-9D0B-9E3FD2A6CD4F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8E57E801-9F15-4174-9D0B-9E3FD2A6CD4F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8E57E801-9F15-4174-9D0B-9E3FD2A6CD4F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8E57E801-9F15-4174-9D0B-9E3FD2A6CD4F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
