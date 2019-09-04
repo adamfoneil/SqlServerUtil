@@ -1,8 +1,13 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using AdoUtil;
+using Dapper;
+using Excel2SqlServer.Library;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Postulate.Base.Extensions;
 using Postulate.Integration.SqlServer;
 using Postulate.SqlServer;
 using System;
+using System.Data.SqlClient;
+using System.IO;
 using System.Linq;
 
 namespace Testing
@@ -36,7 +41,33 @@ namespace Testing
             Assert.IsTrue(results.Last().OffendingValue.Equals("13/0"));
             Assert.IsTrue(results.Last().ReportValue.Equals("6"));
         }
-    }
+
+        [TestMethod]
+        public void FindInvalidDatesInSpreadsheet()
+        {
+            // this requires a very specific spreadsheet that I don't want in source control.
+            // be sure to rename ID column to ID2 or some such or the loader fails
+            var fileName = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "ExcelImport\\LargeSample.xlsx");
+
+            using (var cn = new SqlConnection("Server=(localdb)\\mssqllocaldb;Database=master;Integrated Security=true"))
+            {
+                cn.Execute("CREATE DATABASE [ExcelImport]");
+                using (var cnExcel = new SqlConnection("Server=(localdb)\\mssqllocaldb;Database=ExcelImport;Integrated Security=true"))
+                {
+                    var loader = new ExcelLoader();
+                    loader.Save(fileName, cnExcel, "dbo", "Sample");
+
+                    var data = cnExcel.QueryTable("SELECT * FROM [dbo].[Sample] WHERE [Date] IS NOT NULL");
+                    
+                    // note that sample file had a column named "Files Name"
+                    var results = Validation.ValidateColumnTypes(data, "Files Name", new TypeValidator("Date", typeof(DateTime)));
+
+                    cnExcel.Close();
+                }
+                cn.Execute("DROP DATABASE [ExcelImport]");
+            }
+        }
+    }    
 
     public class SampleData
     {
