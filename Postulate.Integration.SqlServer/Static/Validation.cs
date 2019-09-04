@@ -1,7 +1,10 @@
-﻿using System;
+﻿using AdoUtil;
+using Dapper;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
+using System.Threading.Tasks;
 
 namespace Postulate.Integration.SqlServer
 {
@@ -44,6 +47,55 @@ namespace Postulate.Integration.SqlServer
 
             return results;
         }
+
+        public static async Task<IEnumerable<ValidationInfo>> ValidateSqlServerTypeConversionAsync<TKey>(
+            SqlConnection connection, string schema, string table, string keyColumn, string convertColumn, string convertType, string criteria = null)
+        {
+            string whereClause = (!string.IsNullOrEmpty(criteria)) ? " WHERE " + criteria : string.Empty;
+            var keys = await connection.QueryAsync<TKey>($"SELECT [{keyColumn}] FROM [{schema}].[{table}]{whereClause}");
+
+            List<ValidationInfo> results = new List<ValidationInfo>();
+
+            string testQuery = $"SELECT CONVERT({convertType}, [{convertColumn}]) AS [ConvertedValue] FROM [{schema}].[{table}] WHERE [{keyColumn}]=@key";
+            string srcValueQuery = $"SELECT [{convertColumn}] AS [SourceValue] FROM [{schema}].[{table}] WHERE [{keyColumn}]=@key";
+
+            foreach (var key in keys)
+            {
+                try
+                {
+                    var test = await connection.QuerySingleAsync<ConversionTest>(testQuery, new { key });
+                }
+                catch (Exception exc)
+                {
+                    object offendingValue = null;
+
+                    try
+                    {
+                        offendingValue = await connection.QuerySingleOrDefaultAsync(srcValueQuery, new { key });
+                    }
+                    catch (Exception excInner)
+                    {
+                        offendingValue = "Couldn't determine offending value: " + excInner.Message;
+                    }
+
+                    results.Add(new ValidationInfo()
+                    {
+                        ReportValue = key.ToString(),
+                        ColumnName = convertColumn,
+                        Message = exc.Message,
+                        OffendingValue = offendingValue
+                    });
+                }
+            }
+
+            return results;
+        }
+    }
+
+    internal class ConversionTest
+    {
+        public object ConvertedValue { get; set; }
+        public object SourceValue { get; set; }
     }
 
     public class TypeValidator
