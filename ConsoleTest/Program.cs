@@ -30,14 +30,22 @@ namespace ConsoleTest
                     //vm.MergeRowsAsync<int>(cnLocal, "bi.AllDocuments", cnRemote, "dbo.AllDocuments", "ID", new string[] { "LibraryId", "Filename" }, true).Wait();
 
                     //vm.BulkInsertAsync(cnLocal, "bi.AllDocuments", cnRemote, "dbo.AllDocuments", 75).Wait();
+
                     BulkInsert.ExecuteAsync(cnLocal, "bi.AllDocuments", cnRemote, "dbo.AllDocuments", 75, new BulkInsertOptions()
+                    {
+                        TruncateFirst = true
+                    }).Wait();
+
+                    /*BulkInsert.ExecuteAsync(cnLocal, "bi.AllDocuments", cnRemote, "dbo.AllDocuments", 75, new BulkInsertOptions()
                     {
                         IncludeRowCallback = async (cn, row) =>
                         {
                             var result = await cn.RowExistsAsync("[dbo].[AllDocuments] WHERE [Id]=@id", new { id = row["ID"] });
                             return !result;
                         }
-                    }).Wait();
+                    }).Wait();*/
+
+                    //BulkInsert.ExecuteAsync(cnLocal, "SELECT * FROM [bi].[AllDocuments] WHERE [ID]>411957", cnRemote, DbObject.Parse("dbo.AllDocuments"), 75).Wait();
                 }
             }
         }

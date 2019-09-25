@@ -31,8 +31,9 @@ namespace Postulate.Integration.SqlServer
             do
             {
                 mvi = await GetMultiValueInsert(destObject, data, mvi.StartRow, batchSize, destConnection, options);
+                if (mvi.RowsInserted == 0) break;
                 await destConnection.ExecuteAsync(mvi.Sql);
-            } while (mvi.RowsInserted > 0);
+            } while (true);
         }
 
         public static async Task ExecuteAsync(
@@ -61,6 +62,8 @@ namespace Postulate.Integration.SqlServer
         private static async Task<MultiValueInsert> GetMultiValueInsert(
             DbObject intoTable, DataTable dataTable, int startRow, int batchSize, SqlConnection connection, BulkInsertOptions options = null)
         {
+            if (dataTable.Rows.Count == 0) return new MultiValueInsert() { RowsInserted = 0 };
+
             var columns = dataTable.Columns.OfType<DataColumn>().Where(col => !col.ColumnName.Equals(options?.SkipIdentityColumn ?? string.Empty));
 
             string baseCmd =
