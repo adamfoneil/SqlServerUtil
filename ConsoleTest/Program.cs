@@ -27,7 +27,7 @@ namespace ConsoleTest
                     var vm = new Migrator();
                     //vm.MergeRowsAsync<int>(cnLocal, "bi.AllDocuments", cnRemote, "dbo.AllDocuments", "ID", new string[] { "LibraryId", "Filename" }, true).Wait();
 
-                    vm.MergeAsync(cnLocal, "bi.AllDocuments", cnRemote, "dbo.AllDocuments", true).Wait();
+                    vm.BulkInsertAsync(cnLocal, "bi.AllDocuments", cnRemote, "dbo.AllDocuments", 75).Wait();
                 }
             }
         }
