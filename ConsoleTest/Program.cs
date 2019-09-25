@@ -19,12 +19,13 @@ namespace ConsoleTest
             using (var cnLocal = new SqlConnection(config.GetConnectionString("Local")))
             {
                 //var createTable = Util.GetViewAsTableDefinitionAsync(cnLocal, "bi", "AllDocuments", "dbo", "AllDocuments").Result;
+                
                 using (var cnRemote = new SqlConnection(config.GetConnectionString("Remote")))
                 {
                     //cnRemote.Execute(createTable);
 
-                    var vm = new ViewMigrator();
-                    vm.MergeAsync<int>(cnLocal, "bi.AllDocuments", cnRemote, "dbo.AllDocuments", "ID", new string[] { "LibraryId", "Filename" }).Wait();
+                    var vm = new Migrator();
+                    vm.MergeAsync<int>(cnLocal, "bi.AllDocuments", cnRemote, "dbo.AllDocuments", "ID", new string[] { "LibraryId", "Filename" }, true).Wait();
                 }
             }
         }
