@@ -1,6 +1,8 @@
 ﻿using Dapper;
 using Microsoft.Extensions.Configuration;
+using Postulate.Base.Extensions;
 using Postulate.Integration.SqlServer;
+using Postulate.Integration.SqlServer.Classes;
 using System.Data.SqlClient;
 using System.IO;
 
@@ -27,7 +29,15 @@ namespace ConsoleTest
                     var vm = new Migrator();
                     //vm.MergeRowsAsync<int>(cnLocal, "bi.AllDocuments", cnRemote, "dbo.AllDocuments", "ID", new string[] { "LibraryId", "Filename" }, true).Wait();
 
-                    vm.BulkInsertAsync(cnLocal, "bi.AllDocuments", cnRemote, "dbo.AllDocuments", 75).Wait();
+                    //vm.BulkInsertAsync(cnLocal, "bi.AllDocuments", cnRemote, "dbo.AllDocuments", 75).Wait();
+                    BulkInsert.ExecuteAsync(cnLocal, "bi.AllDocuments", cnRemote, "dbo.AllDocuments", 75, new BulkInsertOptions()
+                    {
+                        IncludeRowCallback = async (cn, row) =>
+                        {
+                            var result = await cn.RowExistsAsync("[dbo].[AllDocuments] WHERE [Id]=@id", new { id = row["ID"] });
+                            return !result;
+                        }
+                    }).Wait();
                 }
             }
         }
