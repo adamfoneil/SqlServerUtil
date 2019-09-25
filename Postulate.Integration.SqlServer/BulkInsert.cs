@@ -75,7 +75,7 @@ namespace Postulate.Integration.SqlServer
             int rows = 0;
             for (int row = startRow; row < startRow + batchSize; row++)
             {
-                if (row > dataTable.Rows.Count) break;
+                if (row > dataTable.Rows.Count - 1) break;
 
                 var dataRow = dataTable.Rows[row];
 
