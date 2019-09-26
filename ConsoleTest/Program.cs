@@ -31,7 +31,7 @@ namespace ConsoleTest
 
                     //vm.BulkInsertAsync(cnLocal, "bi.AllDocuments", cnRemote, "dbo.AllDocuments", 75).Wait();
 
-                    BulkInsert.ExecuteAsync(cnLocal, "bi.AllDocuments", cnRemote, "dbo.AllDocuments", 75, new BulkInsertOptions()
+                    BulkInsert.ExecuteAsync(cnLocal, "bi.AllDocuments", cnRemote, "dbo.AllDocuments", 100, new BulkInsertOptions()
                     {
                         TruncateFirst = true
                     }).Wait();
