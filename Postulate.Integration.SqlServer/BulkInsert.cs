@@ -30,7 +30,7 @@ namespace Postulate.Integration.SqlServer
             MultiValueInsert mvi = new MultiValueInsert();
             do
             {
-                mvi = await GetMultiValueInsert(destObject, data, mvi.StartRow, batchSize, destConnection, options);
+                mvi = await GetMultiValueInsertAsync(destObject, data, mvi.StartRow, batchSize, destConnection, options);
                 if (mvi.RowsInserted == 0) break;
                 await destConnection.ExecuteAsync(mvi.Sql);
             } while (true);
@@ -59,7 +59,7 @@ namespace Postulate.Integration.SqlServer
         /// <summary>
         /// Generates a multi-value INSERT statement from a DataTable and returns the number of rows included
         /// </summary>
-        private static async Task<MultiValueInsert> GetMultiValueInsert(
+        private static async Task<MultiValueInsert> GetMultiValueInsertAsync(
             DbObject intoTable, DataTable dataTable, int startRow, int batchSize, SqlConnection connection, BulkInsertOptions options = null)
         {
             if (dataTable.Rows.Count == 0) return new MultiValueInsert() { RowsInserted = 0 };
