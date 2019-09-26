@@ -26,15 +26,12 @@ namespace ConsoleTest
                 {
                     //cnRemote.Execute(createTable);
 
-                    var vm = new Migrator();
-                    //vm.MergeRowsAsync<int>(cnLocal, "bi.AllDocuments", cnRemote, "dbo.AllDocuments", "ID", new string[] { "LibraryId", "Filename" }, true).Wait();
+                    BulkInsert.ExecuteAsync(cnLocal, "dbo.Batch", cnRemote, "dbo.Batch", 100).Wait();
 
-                    //vm.BulkInsertAsync(cnLocal, "bi.AllDocuments", cnRemote, "dbo.AllDocuments", 75).Wait();
-
-                    BulkInsert.ExecuteAsync(cnLocal, "bi.AllDocuments", cnRemote, "dbo.AllDocuments", 100, new BulkInsertOptions()
+                    /*BulkInsert.ExecuteAsync(cnLocal, "bi.AllDocuments", cnRemote, "dbo.AllDocuments", 100, new BulkInsertOptions()
                     {
                         TruncateFirst = true
-                    }).Wait();
+                    }).Wait();*/
 
                     /*BulkInsert.ExecuteAsync(cnLocal, "bi.AllDocuments", cnRemote, "dbo.AllDocuments", 75, new BulkInsertOptions()
                     {
