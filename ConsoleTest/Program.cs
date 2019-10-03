@@ -68,7 +68,12 @@ namespace ConsoleTest
 
         private static void WriteProgress(BulkInsertProgress obj)
         {
-            Console.WriteLine($"{obj.PercentComplete()} percent done");
+            int percentComplete = obj.PercentComplete();
+            if (percentComplete % 10 == 0)
+            {
+                Console.WriteLine($"{percentComplete} percent done, page {obj.CurrentOffset}");
+            }
+            
         }
     }
 }

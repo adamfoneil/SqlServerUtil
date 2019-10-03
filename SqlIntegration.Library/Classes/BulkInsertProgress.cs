@@ -2,7 +2,7 @@
 {
     public class BulkInsertProgress
     {
-        public int CurrentPage { get; set; }
+        public int CurrentOffset { get; set; }
         public int TotalRows { get; set; }
         public int RowsCompleted { get; set; }
 
