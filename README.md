@@ -1,3 +1,5 @@
+Nuget package: **SqlIntegration.Library**
+
 This is intended to evolve into an Extract, Transform, and Load library for SQL Server -- utilities for merging data across connections for data warehouse and reporting applications. I'm also interested in data migrations that involve foreign keys and multi-tenant isolation. I've done a lot of work in this area over the years, but it's been all over the place. So, I'm trying to consolidate these prior efforts.
 
 The [Postulate](https://github.com/adamosoftware/Postulate) dependency has to do with some extension methods I use, along with [SqlCmdDictionary](https://github.com/adamosoftware/Postulate/wiki/SqlCmdDictionary:-SqlServerCmd-and-MySqlCmd).
