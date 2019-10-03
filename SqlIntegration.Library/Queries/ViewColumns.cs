@@ -1,6 +1,6 @@
 ﻿using Postulate.Base;
 
-namespace Postulate.Integration.SqlServer.Queries
+namespace SqlIntegration.Library.Queries
 {
     public class ViewColumnsResult
     {

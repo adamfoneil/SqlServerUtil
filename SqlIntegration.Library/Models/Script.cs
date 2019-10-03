@@ -1,4 +1,4 @@
-﻿namespace Postulate.Integration.SqlServer.Models
+﻿namespace SqlIntegration.Library.Models
 {
     public class Script
     {

@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Postulate.Integration.SqlServer
+namespace SqlIntegration.Library
 {
     public class DbObject
     {

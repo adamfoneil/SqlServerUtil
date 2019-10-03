@@ -1,7 +1,7 @@
 ﻿using AdoUtil;
 using Dapper;
-using Postulate.Integration.SqlServer.Classes;
-using Postulate.Integration.SqlServer.Internal;
+using SqlIntegration.Library.Classes;
+using SqlIntegration.Library.Internal;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -9,7 +9,7 @@ using System.Data.SqlClient;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Postulate.Integration.SqlServer
+namespace SqlIntegration.Library
 {
     public static class BulkInsert
     {
@@ -24,6 +24,7 @@ namespace Postulate.Integration.SqlServer
             }
 
             var data = sourceConnection.QueryTable(sourceQuery);
+            int totalRows = data.Rows.Count;
 
             MultiValueInsert mvi = new MultiValueInsert();
             do
@@ -31,6 +32,7 @@ namespace Postulate.Integration.SqlServer
                 mvi = await GetMultiValueInsertAsync(destObject, data, mvi.StartRow, batchSize, destConnection, options);
                 if (mvi.RowsInserted == 0) break;
                 await destConnection.ExecuteAsync(mvi.Sql);
+                options?.Progress?.Report(new BulkInsertProgress() { TotalRows = totalRows, RowsCompleted = mvi.StartRow + mvi.RowsInserted });
             } while (true);
         }
 

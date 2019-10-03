@@ -1,9 +1,9 @@
-﻿using Postulate.Integration.SqlServer.Queries;
+﻿using SqlIntegration.Library.Queries;
 using System.Data.SqlClient;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Postulate.Integration.SqlServer
+namespace SqlIntegration.Library
 {
     public static class Util
     {

@@ -1,4 +1,4 @@
-﻿namespace Postulate.Integration.SqlServer.Internal
+﻿namespace SqlIntegration.Library.Internal
 {
     internal class MultiValueInsert
     {
