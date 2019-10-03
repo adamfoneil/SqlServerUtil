@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Configuration;
 using SqlIntegration.Library;
+using System;
 using System.Data.SqlClient;
 using System.IO;
 
@@ -7,7 +8,15 @@ namespace ConsoleTest
 {
     class Program
     {
-        static void Main(string[] args)
+        static void Main()
+        {
+            int done = 24;
+            int total = 217;
+            int percentDone = (int)(((double)done / (double)total) * 100);
+            Console.WriteLine($"percent done = {percentDone}");
+        }
+
+        static void Main1(string[] args)
         {
             var config = new ConfigurationBuilder()
                 .SetBasePath(Directory.GetCurrentDirectory())

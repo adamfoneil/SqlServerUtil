@@ -5,9 +5,9 @@
         public int TotalRows { get; set; }
         public int RowsCompleted { get; set; }
 
-        public decimal PercentComplete()
+        public int PercentComplete()
         {
-            return RowsCompleted / TotalRows;
+            return (int)((RowsCompleted / (double)TotalRows) * 100);
         }
     }
 }

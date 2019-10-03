@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Data;
 using System.Data.SqlClient;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SqlIntegration.Library.Classes
@@ -11,5 +12,6 @@ namespace SqlIntegration.Library.Classes
         public string SkipIdentityColumn { get; set; }
         public Func<SqlConnection, DataRow, Task<bool>> IncludeRowCallback { get; set; }
         public IProgress<BulkInsertProgress> Progress { get; set; }
+        public CancellationTokenSource CancellationToken { get; set; }
     }
 }
