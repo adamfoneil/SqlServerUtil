@@ -2,7 +2,6 @@
 using Dapper;
 using Postulate.Integration.SqlServer.Classes;
 using Postulate.Integration.SqlServer.Internal;
-using Postulate.SqlServer;
 using System;
 using System.Collections.Generic;
 using System.Data;
