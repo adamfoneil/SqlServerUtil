@@ -24,7 +24,6 @@ namespace Postulate.Integration.SqlServer
                 await destConnection.ExecuteAsync($"TRUNCATE TABLE [{destObject.Schema}].[{destObject.Name}]");
             }
 
-            var cmd = await SqlServerCmd.FromTableSchemaAsync(destConnection, destObject.Schema, destObject.Name);
             var data = sourceConnection.QueryTable(sourceQuery);
 
             MultiValueInsert mvi = new MultiValueInsert();
