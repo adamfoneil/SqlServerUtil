@@ -1,8 +1,5 @@
-﻿using Dapper;
-using Microsoft.Extensions.Configuration;
-using Postulate.Base.Extensions;
-using Postulate.Integration.SqlServer;
-using Postulate.Integration.SqlServer.Classes;
+﻿using Microsoft.Extensions.Configuration;
+using SqlIntegration.Library;
 using System.Data.SqlClient;
 using System.IO;
 

@@ -12,6 +12,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\SqlIntegration.Library\SqlIntegration.Library.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Update="config.azure.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

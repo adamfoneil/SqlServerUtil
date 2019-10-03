@@ -4,14 +4,12 @@ using Excel2SqlServer.Library;
 using JsonSettings;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Postulate.Base.Extensions;
-using Postulate.Integration.SqlServer;
 using Postulate.SqlServer;
+using SqlIntegration.Library;
 using System;
-using System.Collections.Generic;
 using System.Data.SqlClient;
 using System.IO;
 using System.Linq;
-using System.Threading;
 
 namespace Testing
 {

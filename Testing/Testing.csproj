@@ -15,4 +15,8 @@
     <PackageReference Include="Postulate.SqlServer" Version="1.3.16" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\SqlIntegration.Library\SqlIntegration.Library.csproj" />
+  </ItemGroup>
+
 </Project>
