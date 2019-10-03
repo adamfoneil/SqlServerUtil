@@ -13,19 +13,54 @@ namespace SqlIntegration.Library
 {
     public static class BulkInsert
     {
+        public static async Task OffsetExecuteAsync(
+            SqlConnection sourceConnection, DbObject sourceObject, string orderBy, int offsetSize,
+            SqlConnection destConnection, DbObject destObject,
+            int batchSize, BulkInsertOptions options = null)
+        {
+            await TruncateFirstAsync(destConnection, destObject, options);
+
+            int page = 0;
+
+            do
+            {
+                DataTable data = await GetOffsetDataAsync(sourceConnection, sourceObject, orderBy, offsetSize, page);
+                if (data.Rows.Count == 0) break;
+                await ExecuteInnerAsync(destConnection, destObject, batchSize, options, data, page);
+                page++;
+            } while (true);            
+        }
+
+        private static async Task<DataTable> GetOffsetDataAsync(SqlConnection connection, DbObject dbObject, string orderBy, int offsetSize, int page)
+        {
+            int offset = page * offsetSize;
+            string query = $"SELECT * FROM [{dbObject.Schema}].[{dbObject.Name}] ORDER BY {orderBy} OFFSET {offset} ROWS FETCH NEXT {offsetSize} ROWS ONLY";
+            return await connection.QueryTableAsync(query);
+        }
+
         public static async Task ExecuteAsync(
             SqlConnection sourceConnection, string sourceQuery,
             SqlConnection destConnection, DbObject destObject,
             int batchSize, BulkInsertOptions options = null)
         {
+            await TruncateFirstAsync(destConnection, destObject, options);
+
+            var data = await sourceConnection.QueryTableAsync(sourceQuery);
+
+            await ExecuteInnerAsync(destConnection, destObject, batchSize, options, data, 0);
+        }
+
+        private static async Task TruncateFirstAsync(SqlConnection destConnection, DbObject destObject, BulkInsertOptions options)
+        {
             if (options?.TruncateFirst ?? false)
             {
                 await destConnection.ExecuteAsync($"TRUNCATE TABLE [{destObject.Schema}].[{destObject.Name}]");
             }
+        }
 
-            var data = sourceConnection.QueryTable(sourceQuery);
+        private static async Task ExecuteInnerAsync(SqlConnection destConnection, DbObject destObject, int batchSize, BulkInsertOptions options, DataTable data, int page)
+        {
             int totalRows = data.Rows.Count;
-
             MultiValueInsert mvi = new MultiValueInsert();
             do
             {
@@ -33,7 +68,7 @@ namespace SqlIntegration.Library
                 mvi = await GetMultiValueInsertAsync(destObject, data, mvi.StartRow, batchSize, destConnection, options);
                 if (mvi.RowsInserted == 0) break;
                 await destConnection.ExecuteAsync(mvi.Sql);
-                options?.Progress?.Report(new BulkInsertProgress() { TotalRows = totalRows, RowsCompleted = mvi.StartRow + mvi.RowsInserted });
+                options?.Progress?.Report(new BulkInsertProgress() { TotalRows = totalRows, RowsCompleted = mvi.StartRow + mvi.RowsInserted, CurrentPage = page });
             } while (true);
         }
 
