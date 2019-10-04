@@ -1,4 +1,4 @@
-Nuget package: **SqlIntegration.Library**
+Nuget package: **SqlIntegration.Library** pre-release version 0.2.3
 
 This is intended to evolve into an Extract, Transform, and Load library for SQL Server -- utilities for merging data across connections for data warehouse and reporting applications. I'm also interested in data migrations that involve foreign keys and multi-tenant isolation. I've done a lot of work in this area over the years, but it's been all over the place. So, I'm trying to consolidate these prior efforts.
 
