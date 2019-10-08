@@ -60,16 +60,30 @@ namespace SqlIntegration.Library
 
         private static async Task ExecuteInnerAsync(SqlConnection destConnection, DbObject destObject, int batchSize, BulkInsertOptions options, DataTable data, int page)
         {
-            int totalRows = data.Rows.Count;
-            MultiValueInsert mvi = new MultiValueInsert();
-            do
+            try
             {
-                if (options?.CancellationToken.IsCancellationRequested ?? false) break;
-                mvi = await GetMultiValueInsertAsync(destObject, data, mvi.StartRow, batchSize, destConnection, options);
-                if (mvi.RowsInserted == 0) break;
-                await destConnection.ExecuteAsync(mvi.Sql);
-                options?.Progress?.Report(new BulkInsertProgress() { TotalRows = totalRows, RowsCompleted = mvi.StartRow + mvi.RowsInserted, CurrentOffset = page });
-            } while (true);
+                await ToggleIndexesAsync(destConnection, destObject, "DISABLE");
+
+                int totalRows = data.Rows.Count;
+                MultiValueInsert mvi = new MultiValueInsert();
+                do
+                {
+                    if (options?.CancellationToken.IsCancellationRequested ?? false) break;
+                    mvi = await GetMultiValueInsertAsync(destObject, data, mvi.StartRow, batchSize, destConnection, options);
+                    if (mvi.RowsInserted == 0) break;
+                    await destConnection.ExecuteAsync(mvi.Sql);
+                    options?.Progress?.Report(new BulkInsertProgress() { TotalRows = totalRows, RowsCompleted = mvi.StartRow + mvi.RowsInserted, CurrentOffset = page });
+                } while (true);
+            }
+            finally
+            {
+                await ToggleIndexesAsync(destConnection, destObject, "ENABLE");
+            }
+        }
+
+        private static async Task ToggleIndexesAsync(SqlConnection connection, DbObject dbObject, string command)
+        {            
+            await connection.ExecuteAsync($"ALTER INDEX ALL ON [{dbObject.Schema}].[{dbObject.Name}] {command}");            
         }
 
         public static async Task ExecuteAsync(

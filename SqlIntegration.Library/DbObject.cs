@@ -39,6 +39,11 @@ namespace SqlIntegration.Library
         public string Schema { get; set; }
         public string Name { get; set; }
 
+        public override string ToString()
+        {
+            return $"{Schema}.{Name}";
+        }
+
         public override bool Equals(object obj)
         {
             var test = obj as DbObject;
