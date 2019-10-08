@@ -38,6 +38,29 @@ namespace SqlIntegration.Library
             return await connection.QueryTableAsync(query);
         }
 
+        public static async Task ExecuteModuloAsync(
+            SqlConnection sourceConnection, DbObject sourceObject, string moduloColumn, int moduloCount,
+            SqlConnection destConnection, DbObject destObject,
+            int batchSize, BulkInsertOptions options = null)
+        {            
+            if (options != null)
+            {
+                if (options.TruncateFirst)
+                {
+                    await TruncateFirstAsync(destConnection, destObject, options);
+                }                
+                
+                // truncate only the first time
+                options.TruncateFirst = false;                
+            }
+
+            for (int chunk = 0; chunk < moduloCount; chunk++)
+            {
+                string query = $"SELECT * FROM [{sourceObject.Schema}].[{sourceObject.Name}] WHERE [{moduloColumn}] & {moduloCount} = {chunk}";
+                await ExecuteAsync(sourceConnection, query, destConnection, destObject, batchSize, options);
+            }            
+        }
+
         public static async Task ExecuteAsync(
             SqlConnection sourceConnection, string sourceQuery,
             SqlConnection destConnection, DbObject destObject,
@@ -77,7 +100,7 @@ namespace SqlIntegration.Library
             }
             finally
             {
-                await ToggleIndexesAsync(destConnection, destObject, "ENABLE");
+                await ToggleIndexesAsync(destConnection, destObject, "REBUILD");
             }
         }
 

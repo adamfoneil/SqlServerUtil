@@ -35,22 +35,23 @@ namespace ConsoleTest
 
                     //BulkInsert.ExecuteAsync(cnLocal, "dbo.DocumentField", cnRemote, "dbo.DocumentField", 100).Wait();
 
-                    BulkInsert.OffsetExecuteAsync(cnLocal, DbObject.Parse("dbo.DocumentField"), "[ID]", 10000, cnRemote, DbObject.Parse("dbo.DocumentField"), 75, new BulkInsertOptions()
+                    /*BulkInsert.OffsetExecuteAsync(cnLocal, DbObject.Parse("dbo.DocumentField"), "[ID]", 10000, cnRemote, DbObject.Parse("dbo.DocumentField"), 75, new BulkInsertOptions()
                     {
                         TruncateFirst = true,
                         Progress = new Progress<BulkInsertProgress>(WriteProgress)
-                    }).Wait();
-
-                    BulkInsert.ExecuteAsync(cnLocal, "SELECT TOP (10000) * FROM dbo.DocumentField", cnRemote, DbObject.Parse("dbo.DocumentField"), 75, new SqlIntegration.Library.Classes.BulkInsertOptions()
-                    {
-                        TruncateFirst = true,
-                        Progress = new Progress<BulkInsertProgress>(WriteProgress)
-                    }).Wait();
-
-                    /*BulkInsert.ExecuteAsync(cnLocal, "bi.AllDocuments", cnRemote, "dbo.AllDocuments", 100, new BulkInsertOptions()
-                    {
-                        TruncateFirst = true
                     }).Wait();*/
+
+                    /*BulkInsert.ExecuteAsync(cnLocal, "SELECT TOP (10000) * FROM dbo.DocumentField", cnRemote, DbObject.Parse("dbo.DocumentField"), 75, new SqlIntegration.Library.Classes.BulkInsertOptions()
+                    {
+                        TruncateFirst = true,
+                        Progress = new Progress<BulkInsertProgress>(WriteProgress)
+                    }).Wait();*/
+
+                    BulkInsert.ExecuteModuloAsync(cnLocal, DbObject.Parse("bi.AllDocuments"), "ID", 5, cnRemote, DbObject.Parse("dbo.AllDocuments"), 150, new BulkInsertOptions()
+                    {
+                        TruncateFirst = true,
+                        Progress = new Progress<BulkInsertProgress>(WriteProgress)
+                    }).Wait();
 
                     /*BulkInsert.ExecuteAsync(cnLocal, "bi.AllDocuments", cnRemote, "dbo.AllDocuments", 75, new BulkInsertOptions()
                     {
@@ -69,7 +70,7 @@ namespace ConsoleTest
         private static void WriteProgress(BulkInsertProgress obj)
         {
             int percentComplete = obj.PercentComplete();
-            if (percentComplete % 10 == 0)
+            if (percentComplete % 5 == 0)
             {
                 Console.WriteLine($"{percentComplete} percent done, page {obj.CurrentOffset}");
             }
