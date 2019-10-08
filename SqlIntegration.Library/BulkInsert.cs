@@ -42,7 +42,9 @@ namespace SqlIntegration.Library
             SqlConnection sourceConnection, DbObject sourceObject, string moduloColumn, int moduloCount,
             SqlConnection destConnection, DbObject destObject,
             int batchSize, BulkInsertOptions options = null)
-        {            
+        {
+            bool disableIndexes = options?.DisableIndexes ?? false;
+
             if (options != null)
             {
                 if (options.TruncateFirst)
@@ -51,14 +53,32 @@ namespace SqlIntegration.Library
                 }                
                 
                 // truncate only the first time
-                options.TruncateFirst = false;                
+                options.TruncateFirst = false;
+                // don't try to disable indexes
+                options.DisableIndexes = false;
             }
 
-            for (int chunk = 0; chunk < moduloCount; chunk++)
+            try
             {
-                string query = $"SELECT * FROM [{sourceObject.Schema}].[{sourceObject.Name}] WHERE [{moduloColumn}] & {moduloCount} = {chunk}";
-                await ExecuteAsync(sourceConnection, query, destConnection, destObject, batchSize, options);
-            }            
+                if (disableIndexes)
+                {
+                    await ToggleIndexesAsync(destConnection, destObject, "DISABLE", options?.CommandTimeout ?? 30);
+                }
+                
+                for (int chunk = 0; chunk < moduloCount; chunk++)
+                {
+                    string query = $"SELECT * FROM [{sourceObject.Schema}].[{sourceObject.Name}] WHERE [{moduloColumn}] % {moduloCount} = {chunk}";
+                    await ExecuteAsync(sourceConnection, query, destConnection, destObject, batchSize, options);
+                }
+            }
+            finally
+            {
+                if (disableIndexes)
+                {
+                    await ToggleIndexesAsync(destConnection, destObject, "REBUILD", options?.CommandTimeout ?? 30);
+                }                
+            }
+
         }
 
         public static async Task ExecuteAsync(
@@ -85,8 +105,11 @@ namespace SqlIntegration.Library
         {
             try
             {
-                await ToggleIndexesAsync(destConnection, destObject, "DISABLE");
-
+                if (options?.DisableIndexes ?? false)
+                {
+                    await ToggleIndexesAsync(destConnection, destObject, "DISABLE", options?.CommandTimeout ?? 30);
+                }
+                
                 int totalRows = data.Rows.Count;
                 MultiValueInsert mvi = new MultiValueInsert();
                 do
@@ -100,13 +123,16 @@ namespace SqlIntegration.Library
             }
             finally
             {
-                await ToggleIndexesAsync(destConnection, destObject, "REBUILD");
+                if (options?.DisableIndexes ?? false)
+                {
+                    await ToggleIndexesAsync(destConnection, destObject, "REBUILD", options?.CommandTimeout ?? 30);
+                }                
             }
         }
 
-        private static async Task ToggleIndexesAsync(SqlConnection connection, DbObject dbObject, string command)
+        private static async Task ToggleIndexesAsync(SqlConnection connection, DbObject dbObject, string command, int commandTimeout)
         {            
-            await connection.ExecuteAsync($"ALTER INDEX ALL ON [{dbObject.Schema}].[{dbObject.Name}] {command}");            
+            await connection.ExecuteAsync($"ALTER INDEX ALL ON [{dbObject.Schema}].[{dbObject.Name}] {command}", commandTimeout: commandTimeout);
         }
 
         public static async Task ExecuteAsync(

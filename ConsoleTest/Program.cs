@@ -50,6 +50,8 @@ namespace ConsoleTest
                     BulkInsert.ExecuteModuloAsync(cnLocal, DbObject.Parse("bi.AllDocuments"), "ID", 5, cnRemote, DbObject.Parse("dbo.AllDocuments"), 150, new BulkInsertOptions()
                     {
                         TruncateFirst = true,
+                        DisableIndexes = true,
+                        CommandTimeout = 200,
                         Progress = new Progress<BulkInsertProgress>(WriteProgress)
                     }).Wait();
 
@@ -72,7 +74,7 @@ namespace ConsoleTest
             int percentComplete = obj.PercentComplete();
             if (percentComplete % 5 == 0)
             {
-                Console.WriteLine($"{percentComplete} percent done, page {obj.CurrentOffset}");
+                Console.WriteLine($"{percentComplete} percent done, page {obj.CurrentOffset}, rows {obj.RowsCompleted}");
             }
             
         }
