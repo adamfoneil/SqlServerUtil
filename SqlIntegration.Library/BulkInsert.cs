@@ -29,14 +29,7 @@ namespace SqlIntegration.Library
                 await ExecuteInnerAsync(destConnection, destObject, batchSize, options, data, page);
                 page++;
             } while (true);            
-        }
-
-        private static async Task<DataTable> GetOffsetDataAsync(SqlConnection connection, DbObject dbObject, string orderBy, int offsetSize, int page)
-        {
-            int offset = page * offsetSize;
-            string query = $"SELECT * FROM [{dbObject.Schema}].[{dbObject.Name}] ORDER BY {orderBy} OFFSET {offset} ROWS FETCH NEXT {offsetSize} ROWS ONLY";
-            return await connection.QueryTableAsync(query);
-        }
+        }        
 
         public static async Task ExecuteAsync(
             SqlConnection sourceConnection, string sourceQuery,
@@ -48,6 +41,40 @@ namespace SqlIntegration.Library
             var data = await sourceConnection.QueryTableAsync(sourceQuery);
 
             await ExecuteInnerAsync(destConnection, destObject, batchSize, options, data, 0);
+        }
+
+        public static async Task ExecuteAsync(
+            SqlConnection sourceConnection, DbObject sourceObject,
+            SqlConnection destConnection, DbObject destObject,
+            int batchSize, BulkInsertOptions options = null)
+        {
+            await ExecuteAsync(
+                sourceConnection, $"SELECT * FROM [{sourceObject.Schema}].[{sourceObject.Name}]",
+                destConnection, destObject, batchSize, options);
+        }
+
+        public static async Task ExecuteAsync(
+            SqlConnection sourceConnection, string sourceObject,
+            SqlConnection destConnection, string destObject,
+            int batchSize, BulkInsertOptions options = null)
+        {
+            await ExecuteAsync(
+                sourceConnection, DbObject.Parse(sourceObject), destConnection,
+                DbObject.Parse(destObject), batchSize, options);
+        }
+
+        public static async Task ExecuteAsync(
+            DataTable sourceData, SqlConnection destConnection, DbObject destObject,
+            int batchSize, BulkInsertOptions options = null)
+        {
+            await ExecuteInnerAsync(destConnection, destObject, batchSize, options, sourceData, 0);
+        }
+
+        private static async Task<DataTable> GetOffsetDataAsync(SqlConnection connection, DbObject dbObject, string orderBy, int offsetSize, int page)
+        {
+            int offset = page * offsetSize;
+            string query = $"SELECT * FROM [{dbObject.Schema}].[{dbObject.Name}] ORDER BY {orderBy} OFFSET {offset} ROWS FETCH NEXT {offsetSize} ROWS ONLY";
+            return await connection.QueryTableAsync(query);
         }
 
         private static async Task TruncateFirstAsync(SqlConnection destConnection, DbObject destObject, BulkInsertOptions options)
@@ -70,26 +97,6 @@ namespace SqlIntegration.Library
                 await destConnection.ExecuteAsync(mvi.Sql);
                 options?.Progress?.Report(new BulkInsertProgress() { TotalRows = totalRows, RowsCompleted = mvi.StartRow + mvi.RowsInserted, CurrentOffset = page });
             } while (true);
-        }
-
-        public static async Task ExecuteAsync(
-            SqlConnection sourceConnection, DbObject sourceObject,
-            SqlConnection destConnection, DbObject destObject,
-            int batchSize, BulkInsertOptions options = null)
-        {
-            await ExecuteAsync(
-                sourceConnection, $"SELECT * FROM [{sourceObject.Schema}].[{sourceObject.Name}]",
-                destConnection, destObject, batchSize, options);
-        }
-
-        public static async Task ExecuteAsync(
-            SqlConnection sourceConnection, string sourceObject,
-            SqlConnection destConnection, string destObject,
-            int batchSize, BulkInsertOptions options = null)
-        {
-            await ExecuteAsync(
-                sourceConnection, DbObject.Parse(sourceObject), destConnection,
-                DbObject.Parse(destObject), batchSize, options);
         }
 
         /// <summary>

@@ -6,12 +6,13 @@
     <Company>Adam O'Neil</Company>
     <Product>SqlIntegration.Library</Product>
     <Description>ETL library in progress for SQL Server, BulkInsert static class</Description>
-    <Version>0.2.3-alpha</Version>
+    <Version>0.2.4-alpha</Version>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <RepositoryUrl>https://github.com/adamosoftware/SqlIntegration</RepositoryUrl>
     <PackageProjectUrl>https://github.com/adamosoftware/SqlIntegration</PackageProjectUrl>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageReleaseNotes>added BulkInsert.OffsetExecuteAsync</PackageReleaseNotes>
+    <AssemblyVersion>0.2.4.0</AssemblyVersion>
   </PropertyGroup>
 
   <ItemGroup>
