@@ -28,8 +28,8 @@ namespace SqlIntegration.Library
                 if (data.Rows.Count == 0) break;
                 await ExecuteInnerAsync(destConnection, destObject, batchSize, options, data, page);
                 page++;
-            } while (true);            
-        }        
+            } while (true);
+        }
 
         public static async Task ExecuteModuloAsync(
             SqlConnection sourceConnection, DbObject sourceObject, string moduloColumn, int moduloCount,
@@ -43,8 +43,8 @@ namespace SqlIntegration.Library
                 if (options.TruncateFirst)
                 {
                     await TruncateFirstAsync(destConnection, destObject, options);
-                }                
-                
+                }
+
                 // truncate only the first time
                 options.TruncateFirst = false;
                 // don't try to disable indexes
@@ -57,7 +57,7 @@ namespace SqlIntegration.Library
                 {
                     await ToggleIndexesAsync(destConnection, destObject, "DISABLE", options?.CommandTimeout ?? 30);
                 }
-                
+
                 for (int chunk = 0; chunk < moduloCount; chunk++)
                 {
                     string query = $"SELECT * FROM [{sourceObject.Schema}].[{sourceObject.Name}] WHERE [{moduloColumn}] % {moduloCount} = {chunk}";
@@ -69,9 +69,8 @@ namespace SqlIntegration.Library
                 if (disableIndexes)
                 {
                     await ToggleIndexesAsync(destConnection, destObject, "REBUILD", options?.CommandTimeout ?? 30);
-                }                
+                }
             }
-
         }
 
         public static async Task ExecuteAsync(
@@ -136,7 +135,7 @@ namespace SqlIntegration.Library
                 {
                     await ToggleIndexesAsync(destConnection, destObject, "DISABLE", options?.CommandTimeout ?? 30);
                 }
-                
+
                 int totalRows = data.Rows.Count;
                 MultiValueInsert mvi = new MultiValueInsert();
                 do
@@ -153,12 +152,12 @@ namespace SqlIntegration.Library
                 if (options?.DisableIndexes ?? false)
                 {
                     await ToggleIndexesAsync(destConnection, destObject, "REBUILD", options?.CommandTimeout ?? 30);
-                }                
+                }
             }
         }
 
         private static async Task ToggleIndexesAsync(SqlConnection connection, DbObject dbObject, string command, int commandTimeout)
-        {            
+        {
             await connection.ExecuteAsync($"ALTER INDEX ALL ON [{dbObject.Schema}].[{dbObject.Name}] {command}", commandTimeout: commandTimeout);
         }
 

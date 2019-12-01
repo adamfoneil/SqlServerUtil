@@ -11,19 +11,19 @@ namespace SqlIntegration.Library
     public class Migrator
     {
         public async Task MergeRowsAsync<TIdentity>(
-            SqlConnection sourceConnection, string sourceObject, SqlConnection destConnection, 
-            string destTable, string identityColumn, IEnumerable<string> keyColumns, 
+            SqlConnection sourceConnection, string sourceObject, SqlConnection destConnection,
+            string destTable, string identityColumn, IEnumerable<string> keyColumns,
             bool truncateFirst)
         {
             await MergeRowsAsync<TIdentity>(
-                sourceConnection, DbObject.Parse(sourceObject), destConnection, 
-                DbObject.Parse(destTable), identityColumn, keyColumns, 
+                sourceConnection, DbObject.Parse(sourceObject), destConnection,
+                DbObject.Parse(destTable), identityColumn, keyColumns,
                 truncateFirst);
         }
 
         public async Task MergeRowsAsync<TIdentity>(
-            SqlConnection sourceConnection, DbObject sourceObject, 
-            SqlConnection destConnection, DbObject destObject, string identityColumn, IEnumerable<string> keyColumns, 
+            SqlConnection sourceConnection, DbObject sourceObject,
+            SqlConnection destConnection, DbObject destObject, string identityColumn, IEnumerable<string> keyColumns,
             bool truncateFirst)
         {
             if (truncateFirst)

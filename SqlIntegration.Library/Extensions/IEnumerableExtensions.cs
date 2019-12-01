@@ -25,11 +25,11 @@ namespace SqlIntegration.Library.Extensions
                     .GetProperties(BindingFlags.Public | BindingFlags.Instance)
                     .Where(pi => pi.CanRead)
                     .ToDictionary(item => item.Name);
-                
+
                 foreach (string name in properties.Keys) dataTable.Columns.Add(name, properties[name].PropertyType);
 
                 foreach (T obj in enumerable)
-                {                    
+                {
                     dataTable.Rows.Add(properties.Select(kp => kp.Value.GetValue(obj)).ToArray());
                 }
             }

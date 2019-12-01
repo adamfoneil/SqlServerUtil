@@ -8,7 +8,7 @@ namespace SqlIntegration.Library
     public static class Util
     {
         public static async Task<string> GetViewAsTableDefinitionAsync(
-            SqlConnection connection, 
+            SqlConnection connection,
             string sourceSchema, string sourceView, string destSchema, string destTable)
         {
             var columns = await new ViewColumns() { SchemaName = sourceSchema, ViewName = sourceView }.ExecuteAsync(connection);
@@ -16,6 +16,6 @@ namespace SqlIntegration.Library
             return $"CREATE TABLE [{destSchema}].[{destTable}] (\r\n\t" +
                 string.Join(",\r\n\t", columns.Select(col => col.GetSyntax())) +
                 "\r\n)";
-        }        
+        }
     }
 }
