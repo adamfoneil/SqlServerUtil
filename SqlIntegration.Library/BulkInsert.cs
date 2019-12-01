@@ -31,6 +31,49 @@ namespace SqlIntegration.Library
             } while (true);            
         }        
 
+        public static async Task ExecuteModuloAsync(
+            SqlConnection sourceConnection, DbObject sourceObject, string moduloColumn, int moduloCount,
+            SqlConnection destConnection, DbObject destObject,
+            int batchSize, BulkInsertOptions options = null)
+        {
+            bool disableIndexes = options?.DisableIndexes ?? false;
+
+            if (options != null)
+            {
+                if (options.TruncateFirst)
+                {
+                    await TruncateFirstAsync(destConnection, destObject, options);
+                }                
+                
+                // truncate only the first time
+                options.TruncateFirst = false;
+                // don't try to disable indexes
+                options.DisableIndexes = false;
+            }
+
+            try
+            {
+                if (disableIndexes)
+                {
+                    await ToggleIndexesAsync(destConnection, destObject, "DISABLE", options?.CommandTimeout ?? 30);
+                }
+                
+                for (int chunk = 0; chunk < moduloCount; chunk++)
+                {
+                    string query = $"SELECT * FROM [{sourceObject.Schema}].[{sourceObject.Name}] WHERE [{moduloColumn}] % {moduloCount} = {chunk}";
+                    await ExecuteAsync(sourceConnection, query, destConnection, destObject, batchSize, options);
+                }
+            }
+            finally
+            {
+                if (disableIndexes)
+                {
+                    await ToggleIndexesAsync(destConnection, destObject, "REBUILD", options?.CommandTimeout ?? 30);
+                }                
+            }
+
+        }
+
         public static async Task ExecuteAsync(
             SqlConnection sourceConnection, string sourceQuery,
             SqlConnection destConnection, DbObject destObject,
@@ -87,16 +130,36 @@ namespace SqlIntegration.Library
 
         private static async Task ExecuteInnerAsync(SqlConnection destConnection, DbObject destObject, int batchSize, BulkInsertOptions options, DataTable data, int page)
         {
-            int totalRows = data.Rows.Count;
-            MultiValueInsert mvi = new MultiValueInsert();
-            do
+            try
             {
-                if (options?.CancellationToken.IsCancellationRequested ?? false) break;
-                mvi = await GetMultiValueInsertAsync(destObject, data, mvi.StartRow, batchSize, destConnection, options);
-                if (mvi.RowsInserted == 0) break;
-                await destConnection.ExecuteAsync(mvi.Sql);
-                options?.Progress?.Report(new BulkInsertProgress() { TotalRows = totalRows, RowsCompleted = mvi.StartRow + mvi.RowsInserted, CurrentOffset = page });
-            } while (true);
+                if (options?.DisableIndexes ?? false)
+                {
+                    await ToggleIndexesAsync(destConnection, destObject, "DISABLE", options?.CommandTimeout ?? 30);
+                }
+                
+                int totalRows = data.Rows.Count;
+                MultiValueInsert mvi = new MultiValueInsert();
+                do
+                {
+                    if (options?.CancellationToken.IsCancellationRequested ?? false) break;
+                    mvi = await GetMultiValueInsertAsync(destObject, data, mvi.StartRow, batchSize, destConnection, options);
+                    if (mvi.RowsInserted == 0) break;
+                    await destConnection.ExecuteAsync(mvi.Sql);
+                    options?.Progress?.Report(new BulkInsertProgress() { TotalRows = totalRows, RowsCompleted = mvi.StartRow + mvi.RowsInserted, CurrentOffset = page });
+                } while (true);
+            }
+            finally
+            {
+                if (options?.DisableIndexes ?? false)
+                {
+                    await ToggleIndexesAsync(destConnection, destObject, "REBUILD", options?.CommandTimeout ?? 30);
+                }                
+            }
+        }
+
+        private static async Task ToggleIndexesAsync(SqlConnection connection, DbObject dbObject, string command, int commandTimeout)
+        {            
+            await connection.ExecuteAsync($"ALTER INDEX ALL ON [{dbObject.Schema}].[{dbObject.Name}] {command}", commandTimeout: commandTimeout);
         }
 
         /// <summary>

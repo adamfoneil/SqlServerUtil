@@ -13,5 +13,7 @@ namespace SqlIntegration.Library.Classes
         public Func<SqlConnection, DataRow, Task<bool>> IncludeRowCallback { get; set; }
         public IProgress<BulkInsertProgress> Progress { get; set; }
         public CancellationToken CancellationToken { get; set; }
+        public bool DisableIndexes { get; set; }
+        public int CommandTimeout { get; set; } = 30;
     }
 }
