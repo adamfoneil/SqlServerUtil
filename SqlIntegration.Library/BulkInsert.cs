@@ -112,6 +112,13 @@ namespace SqlIntegration.Library
             await ExecuteInnerAsync(destConnection, destObject, batchSize, options, sourceData, 0);
         }
 
+        public static async Task ExecuteAsync(
+            DataTable sourceData, SqlConnection destConnection, string destObject,
+            int batchSize, BulkInsertOptions options = null)
+        {
+            await ExecuteInnerAsync(destConnection, DbObject.Parse(destObject), batchSize, options, sourceData, 0);
+        }
+
         private static async Task<DataTable> GetOffsetDataAsync(SqlConnection connection, DbObject dbObject, string orderBy, int offsetSize, int page)
         {
             int offset = page * offsetSize;
