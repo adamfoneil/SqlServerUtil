@@ -1,4 +1,4 @@
-﻿using Postulate.Base;
+﻿using Dapper.QX;
 
 namespace SqlIntegration.Library.Queries
 {
