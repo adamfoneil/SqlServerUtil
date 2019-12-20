@@ -14,6 +14,7 @@ namespace SqlIntegration.Library
         public async static Task<DeepCopy> StartAsync(SqlConnection cn)
         {
             await CreateDbObjectsAsync(cn);
+
             int jobId = await CreateJobAsync(cn);
 
             var result = new DeepCopy(jobId);
