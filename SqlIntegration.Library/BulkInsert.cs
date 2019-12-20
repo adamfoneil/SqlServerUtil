@@ -28,14 +28,7 @@ namespace SqlIntegration.Library
                 if (data.Rows.Count == 0) break;
                 await ExecuteInnerAsync(destConnection, destObject, batchSize, options, data, page);
                 page++;
-            } while (true);            
-        }
-
-        private static async Task<DataTable> GetOffsetDataAsync(SqlConnection connection, DbObject dbObject, string orderBy, int offsetSize, int page)
-        {
-            int offset = page * offsetSize;
-            string query = $"SELECT * FROM [{dbObject.Schema}].[{dbObject.Name}] ORDER BY {orderBy} OFFSET {offset} ROWS FETCH NEXT {offsetSize} ROWS ONLY";
-            return await connection.QueryTableAsync(query);
+            } while (true);
         }
 
         public static async Task ExecuteModuloAsync(
@@ -50,8 +43,8 @@ namespace SqlIntegration.Library
                 if (options.TruncateFirst)
                 {
                     await TruncateFirstAsync(destConnection, destObject, options);
-                }                
-                
+                }
+
                 // truncate only the first time
                 options.TruncateFirst = false;
                 // don't try to disable indexes
@@ -64,7 +57,7 @@ namespace SqlIntegration.Library
                 {
                     await ToggleIndexesAsync(destConnection, destObject, "DISABLE", options?.CommandTimeout ?? 30);
                 }
-                
+
                 for (int chunk = 0; chunk < moduloCount; chunk++)
                 {
                     string query = $"SELECT * FROM [{sourceObject.Schema}].[{sourceObject.Name}] WHERE [{moduloColumn}] % {moduloCount} = {chunk}";
@@ -76,9 +69,8 @@ namespace SqlIntegration.Library
                 if (disableIndexes)
                 {
                     await ToggleIndexesAsync(destConnection, destObject, "REBUILD", options?.CommandTimeout ?? 30);
-                }                
+                }
             }
-
         }
 
         public static async Task ExecuteAsync(
@@ -91,48 +83,6 @@ namespace SqlIntegration.Library
             var data = await sourceConnection.QueryTableAsync(sourceQuery);
 
             await ExecuteInnerAsync(destConnection, destObject, batchSize, options, data, 0);
-        }
-
-        private static async Task TruncateFirstAsync(SqlConnection destConnection, DbObject destObject, BulkInsertOptions options)
-        {
-            if (options?.TruncateFirst ?? false)
-            {
-                await destConnection.ExecuteAsync($"TRUNCATE TABLE [{destObject.Schema}].[{destObject.Name}]");
-            }
-        }
-
-        private static async Task ExecuteInnerAsync(SqlConnection destConnection, DbObject destObject, int batchSize, BulkInsertOptions options, DataTable data, int page)
-        {
-            try
-            {
-                if (options?.DisableIndexes ?? false)
-                {
-                    await ToggleIndexesAsync(destConnection, destObject, "DISABLE", options?.CommandTimeout ?? 30);
-                }
-                
-                int totalRows = data.Rows.Count;
-                MultiValueInsert mvi = new MultiValueInsert();
-                do
-                {
-                    if (options?.CancellationToken.IsCancellationRequested ?? false) break;
-                    mvi = await GetMultiValueInsertAsync(destObject, data, mvi.StartRow, batchSize, destConnection, options);
-                    if (mvi.RowsInserted == 0) break;
-                    await destConnection.ExecuteAsync(mvi.Sql);
-                    options?.Progress?.Report(new BulkInsertProgress() { TotalRows = totalRows, RowsCompleted = mvi.StartRow + mvi.RowsInserted, CurrentOffset = page });
-                } while (true);
-            }
-            finally
-            {
-                if (options?.DisableIndexes ?? false)
-                {
-                    await ToggleIndexesAsync(destConnection, destObject, "REBUILD", options?.CommandTimeout ?? 30);
-                }                
-            }
-        }
-
-        private static async Task ToggleIndexesAsync(SqlConnection connection, DbObject dbObject, string command, int commandTimeout)
-        {            
-            await connection.ExecuteAsync($"ALTER INDEX ALL ON [{dbObject.Schema}].[{dbObject.Name}] {command}", commandTimeout: commandTimeout);
         }
 
         public static async Task ExecuteAsync(
@@ -153,6 +103,69 @@ namespace SqlIntegration.Library
             await ExecuteAsync(
                 sourceConnection, DbObject.Parse(sourceObject), destConnection,
                 DbObject.Parse(destObject), batchSize, options);
+        }
+
+        public static async Task ExecuteAsync(
+            DataTable sourceData, SqlConnection destConnection, DbObject destObject,
+            int batchSize, BulkInsertOptions options = null)
+        {
+            await ExecuteInnerAsync(destConnection, destObject, batchSize, options, sourceData, 0);
+        }
+
+        public static async Task ExecuteAsync(
+            DataTable sourceData, SqlConnection destConnection, string destObject,
+            int batchSize, BulkInsertOptions options = null)
+        {
+            await ExecuteInnerAsync(destConnection, DbObject.Parse(destObject), batchSize, options, sourceData, 0);
+        }
+
+        private static async Task<DataTable> GetOffsetDataAsync(SqlConnection connection, DbObject dbObject, string orderBy, int offsetSize, int page)
+        {
+            int offset = page * offsetSize;
+            string query = $"SELECT * FROM [{dbObject.Schema}].[{dbObject.Name}] ORDER BY {orderBy} OFFSET {offset} ROWS FETCH NEXT {offsetSize} ROWS ONLY";
+            return await connection.QueryTableAsync(query);
+        }
+
+        private static async Task TruncateFirstAsync(SqlConnection destConnection, DbObject destObject, BulkInsertOptions options)
+        {
+            if (options?.TruncateFirst ?? false)
+            {
+                await destConnection.ExecuteAsync($"TRUNCATE TABLE [{destObject.Schema}].[{destObject.Name}]");
+            }
+        }
+
+        private static async Task ExecuteInnerAsync(SqlConnection destConnection, DbObject destObject, int batchSize, BulkInsertOptions options, DataTable data, int page)
+        {
+            try
+            {
+                if (options?.DisableIndexes ?? false)
+                {
+                    await ToggleIndexesAsync(destConnection, destObject, "DISABLE", options?.CommandTimeout ?? 30);
+                }
+
+                int totalRows = data.Rows.Count;
+                MultiValueInsert mvi = new MultiValueInsert();
+                do
+                {
+                    if (options?.CancellationToken.IsCancellationRequested ?? false) break;
+                    mvi = await GetMultiValueInsertAsync(destObject, data, mvi.StartRow, batchSize, destConnection, options);
+                    if (mvi.RowsInserted == 0) break;
+                    await destConnection.ExecuteAsync(mvi.Sql);
+                    options?.Progress?.Report(new BulkInsertProgress() { TotalRows = totalRows, RowsCompleted = mvi.StartRow + mvi.RowsInserted, CurrentOffset = page });
+                } while (true);
+            }
+            finally
+            {
+                if (options?.DisableIndexes ?? false)
+                {
+                    await ToggleIndexesAsync(destConnection, destObject, "REBUILD", options?.CommandTimeout ?? 30);
+                }
+            }
+        }
+
+        private static async Task ToggleIndexesAsync(SqlConnection connection, DbObject dbObject, string command, int commandTimeout)
+        {
+            await connection.ExecuteAsync($"ALTER INDEX ALL ON [{dbObject.Schema}].[{dbObject.Name}] {command}", commandTimeout: commandTimeout);
         }
 
         /// <summary>
