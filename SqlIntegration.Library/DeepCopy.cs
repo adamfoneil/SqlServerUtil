@@ -5,18 +5,18 @@ using System.Threading.Tasks;
 
 namespace SqlIntegration.Library
 {
-    public class DataMigrator
+    public class DeepCopy
     {
-        public DataMigrator(int jobId) { JobId = jobId; }
+        public DeepCopy(int jobId) { JobId = jobId; }
 
         public int JobId { get; }
 
-        public async static Task<DataMigrator> StartAsync(SqlConnection cn)
+        public async static Task<DeepCopy> StartAsync(SqlConnection cn)
         {
             await CreateDbObjectsAsync(cn);
             int jobId = await CreateJobAsync(cn);
 
-            var result = new DataMigrator(jobId);
+            var result = new DeepCopy(jobId);
             return result;
         }
 
