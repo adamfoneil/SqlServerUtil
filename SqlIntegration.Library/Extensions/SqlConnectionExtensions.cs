@@ -1,7 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using Dapper.CX.Extensions;
 using System.Data.SqlClient;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace SqlIntegration.Library.Extensions
@@ -10,7 +8,12 @@ namespace SqlIntegration.Library.Extensions
     {
         public static async Task<bool> SchemaExistsAsync(this SqlConnection connection, string schemaName)
         {
-            throw new NotImplementedException();
+            return await connection.RowExistsAsync("[sys].[schemas] WHERE [name]=@name", new { name = schemaName });
+        }
+
+        public static async Task<bool> TableExistsAsync(this SqlConnection connection, string schema, string tableName)
+        {
+            return await connection.RowExistsAsync("[sys].[tables] WHERE SCHEMA_NAME([schema_id])=@schema AND [name]=@tableName", new { schema, tableName });
         }
     }
 }
