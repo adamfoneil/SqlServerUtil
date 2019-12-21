@@ -1,6 +1,7 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SqlIntegration.Library;
 using SqlServer.LocalDb;
+using SqlIntegration.Library.Extensions;
 
 namespace Testing
 {
@@ -14,8 +15,8 @@ namespace Testing
 
             using (var cn = LocalDb.GetConnection("SqlMigrator"))
             {
-                var migrator = SqlMigrator<int>.StartJobAsync(cn).Result;
-                Assert.IsTrue(migrator.JobId == 1);
+                var migrator = SqlMigrator<int>.InitializeAsync(cn).Result;
+                Assert.IsTrue(cn.TableExistsAsync(migrator.KeyMapTable).Result);
             }
         }
     }

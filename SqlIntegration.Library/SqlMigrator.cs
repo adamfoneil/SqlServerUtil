@@ -13,16 +13,12 @@ namespace SqlIntegration.Library
 {
     public class SqlMigrator<TIdentity>
     {
-        private const string Schema = "migrate";
-        private const string JobTable = "Job";
-        private const string KeyMapTable = "KeyMap";
+        private const string Schema = "migrate";        
+        private const string KeyMapTableName = "KeyMap";
 
-        public SqlMigrator(int jobId) 
-        { 
-            JobId = jobId; 
-        }
-
-        public int JobId { get; }
+        private SqlMigrator() 
+        {             
+        }        
 
         private static Dictionary<Type, KeyMapTableInfo> SupportedIdentityTypes
         {
@@ -37,14 +33,10 @@ namespace SqlIntegration.Library
             }
         }
 
-        public async static Task<SqlMigrator<TIdentity>> StartJobAsync(SqlConnection cn)
+        public async static Task<SqlMigrator<TIdentity>> InitializeAsync(SqlConnection cn)
         {
             await CreateDbObjectsAsync(cn);
-
-            int jobId = await new SqlServerCmd($"{Schema}.{JobTable}", "Id", new string[] { "DateCompleted" }).InsertAsync<int>(cn);
-            
-            var result = new SqlMigrator<TIdentity>(jobId);
-            return result;
+            return new SqlMigrator<TIdentity>();
         }
 
         private static async Task CreateDbObjectsAsync(SqlConnection cn)
@@ -54,31 +46,23 @@ namespace SqlIntegration.Library
                 await cn.ExecuteAsync($"CREATE SCHEMA [{Schema}]");
             }
 
-            if (!(await cn.TableExistsAsync(Schema, JobTable)))
-            {
-                await cn.ExecuteAsync($@"CREATE TABLE [{Schema}].[{JobTable}] (
-                    [Id] int identity(1,1) PRIMARY KEY,
-                    [DateCreated] datetime NOT NULL DEFAULT (getutcdate()),
-                    [DateCompleted] datetime NULL
-                )");
-            }
-            
             string tableName = GetTableName(out KeyMapTableInfo info);            
             if (!(await cn.TableExistsAsync(Schema, tableName)))
             {
                 await cn.ExecuteAsync($@"CREATE TABLE [{Schema}].[{tableName}] (
-                    [JobId] int NOT NULL,
+                    [Id] bigint identity(1,1) PRIMARY KEY,
                     [Timestamp] datetime NOT NULL DEFAULT (getutcdate()),
                     [Schema] nvarchar(100) NOT NULL,
                     [TableName] nvarchar(100) NOT NULL,
                     [SourceId] {info.SqlTypeName} NOT NULL,
                     [NewId] {info.SqlTypeName} NOT NULL,
-                    CONSTRAINT [PK_KeyMap_{info.MapTableSuffix}] PRIMARY KEY ([Schema], [TableName], [SourceId]),
-                    CONSTRAINT [U_KeyMap_{info.MapTableSuffix}_NewId] UNIQUE ([Schema], [TableName], [NewId]),
-                    CONSTRAINT [FK_KeyMap_{info.MapTableSuffix}_Job] FOREIGN KEY ([JobId]) REFERENCES [{Schema}].[{JobTable}] ([Id])
+                    CONSTRAINT [U_KeyMap_{info.MapTableSuffix}_SourceId] UNIQUE ([Schema], [TableName], [SourceId]),
+                    CONSTRAINT [U_KeyMap_{info.MapTableSuffix}_NewId] UNIQUE ([Schema], [TableName], [NewId])                    
                 )");
             }
         }
+
+        public DbObject KeyMapTable { get { return new DbObject(Schema, GetTableName()); } }
 
         private static string GetTableName()
         {
@@ -90,7 +74,7 @@ namespace SqlIntegration.Library
             try
             {
                 info = SupportedIdentityTypes[typeof(TIdentity)];
-                return $"{KeyMapTable}_{info.MapTableSuffix}";
+                return $"{KeyMapTableName}_{info.MapTableSuffix}";
             }
             catch (Exception exc)
             {
@@ -105,8 +89,7 @@ namespace SqlIntegration.Library
             Dictionary<string, string> mapForeignKeys = null,
             Dictionary<string, object> setColumns = null)
         {
-            var mappingCmd = await SqlServerCmd.FromTableSchemaAsync(connection, Schema, GetTableName());
-            mappingCmd["JobId"] = JobId;
+            var mappingCmd = await SqlServerCmd.FromTableSchemaAsync(connection, Schema, GetTableName());            
             mappingCmd["Schema"] = schema;
             mappingCmd["TableName"] = tableName;
 
