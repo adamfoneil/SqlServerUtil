@@ -120,12 +120,12 @@ namespace SqlIntegration.Library
             {
                 TIdentity sourceId = dataRow.Field<TIdentity>(identityColumn);
                 
-                // has this row already been mapped?
-                if (await RowIsMappedAsync(connection, schema, tableName, sourceId)) continue;
+                // if this row has already been copied, then skip
+                if (await IsRowMappedAsync(connection, new DbObject(schema, tableName), sourceId)) continue;
                 
                 cmd.BindDataRow(dataRow);
-                if (mapForeignKeys != null) MapForeignKeys(dataRow, mapForeignKeys);
-                if (setColumns != null) SetColumns(dataRow, setColumns);
+                await MapForeignKeysAsync(connection, dataRow, mapForeignKeys, cmd);
+                SetColumns(dataRow, setColumns, cmd);
 
                 try
                 {
@@ -138,10 +138,10 @@ namespace SqlIntegration.Library
                         mappingCmd["NewId"] = newId;
                         await mappingCmd.InsertAsync<TIdentity>(connection);
                     }
-                    catch
+                    catch (Exception exc)
                     {
                         // if there's a mapping problem, we need to quit right away and diagnose
-                        throw;
+                        throw new Exception($"Error mapping source Id {sourceId} to new Id {newId}: {exc.Message}");
                     }
                 }
                 catch (Exception exc)
@@ -170,7 +170,14 @@ namespace SqlIntegration.Library
 
         private void ValidateSetColumns(Dictionary<string, object> setColumns, SqlServerCmd cmd)
         {
-            throw new NotImplementedException();
+            if (setColumns == null) return;
+
+            var invalid = setColumns.Keys.Except(cmd.Keys);
+            if (invalid.Any())
+            {
+                string invalidCols = string.Join(", ", invalid);
+                throw new Exception($"There are one or more unrecognized set columns: {invalidCols}");
+            }
         }
 
         private async Task ValidateForeignKeyMappingAsync(SqlConnection connection, Dictionary<string, string> mapForeignKeys)
@@ -182,7 +189,7 @@ namespace SqlIntegration.Library
                 FROM {GetTableName()}
                 GROUP BY [Schema], [TableName]");
 
-            var invalid = mapForeignKeys.Keys.Except(validSources);
+            var invalid = mapForeignKeys.Values.Except(validSources);
             if (invalid.Any())
             {
                 string invalidKeys = string.Join(", ", invalid);
@@ -190,19 +197,50 @@ namespace SqlIntegration.Library
             }
         }
 
-        private void SetColumns(DataRow dataRow, Dictionary<string, object> setColumns)
+        private void SetColumns(DataRow dataRow, Dictionary<string, object> setColumns, SqlServerCmd cmd)
         {
             throw new NotImplementedException();
         }
 
-        private void MapForeignKeys(DataRow dataRow, Dictionary<string, string> mapForeignKeys)
+        private async Task<TIdentity> GetNewIdAsync(SqlConnection cn, DbObject dbObject, TIdentity sourceId)
         {
-            throw new NotImplementedException();
+            try
+            {
+                return await cn.QuerySingleAsync<TIdentity>(
+                    $@"SELECT [NewId] FROM [{Schema}].[{GetTableName()}] WHERE [Schema]=@schema AND [TableName]=@tableName AND [SourceId]=@sourceId",
+                    new { schema = dbObject.Schema, tableName = dbObject.Name, sourceId });
+            }
+            catch (Exception exc)
+            {
+                throw new Exception($"Error getting new Id for {dbObject.ToString()} from source Id {sourceId}: {exc.Message}");
+            }
         }
 
-        private Task<bool> RowIsMappedAsync(SqlConnection connection, string schema, string tableName, TIdentity idValue)
+        private async Task MapForeignKeysAsync(SqlConnection connection, DataRow dataRow, Dictionary<string, string> mapForeignKeys, SqlServerCmd cmd)
         {
-            throw new NotImplementedException();
+            if (mapForeignKeys == null) return;
+            
+            foreach (var kp in mapForeignKeys)
+            {
+                if (!dataRow.IsNull(kp.Key))
+                {
+                    TIdentity sourceId = dataRow.Field<TIdentity>(kp.Key);
+                    cmd[kp.Key] = await GetNewIdAsync(connection, DbObject.Parse(kp.Value), sourceId);
+                }                
+            }
+        }
+
+        private async Task<bool> IsRowMappedAsync(SqlConnection connection, DbObject dbObject, TIdentity idValue)
+        {
+            try
+            {
+                var newId = await GetNewIdAsync(connection, dbObject, idValue);
+                return true;
+            }
+            catch 
+            {
+                return false;
+            }
         }
 
         public async Task CopyAcrossAsync(
