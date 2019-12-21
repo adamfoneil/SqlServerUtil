@@ -52,7 +52,7 @@ namespace ConsoleTest
                         TruncateFirst = true,
                         DisableIndexes = true,
                         CommandTimeout = 200,
-                        Progress = new Progress<BulkInsertProgress>(WriteProgress)
+                        Progress = new Progress<RowOperationProgress>(WriteProgress)
                     }).Wait();
 
                     /*BulkInsert.ExecuteAsync(cnLocal, "bi.AllDocuments", cnRemote, "dbo.AllDocuments", 75, new BulkInsertOptions()
@@ -69,7 +69,7 @@ namespace ConsoleTest
             }
         }
 
-        private static void WriteProgress(BulkInsertProgress obj)
+        private static void WriteProgress(RowOperationProgress obj)
         {
             int percentComplete = obj.PercentComplete();
             if (percentComplete % 5 == 0)

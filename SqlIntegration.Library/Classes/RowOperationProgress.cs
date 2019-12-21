@@ -1,6 +1,6 @@
 ﻿namespace SqlIntegration.Library.Classes
 {
-    public class BulkInsertProgress
+    public class RowOperationProgress
     {
         public int CurrentOffset { get; set; }
         public int TotalRows { get; set; }

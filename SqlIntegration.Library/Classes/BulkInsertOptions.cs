@@ -11,7 +11,7 @@ namespace SqlIntegration.Library.Classes
         public bool TruncateFirst { get; set; }
         public string SkipIdentityColumn { get; set; }
         public Func<SqlConnection, DataRow, Task<bool>> IncludeRowCallback { get; set; }
-        public IProgress<BulkInsertProgress> Progress { get; set; }
+        public IProgress<RowOperationProgress> Progress { get; set; }
         public CancellationToken CancellationToken { get; set; }
         public bool DisableIndexes { get; set; }
         public int CommandTimeout { get; set; } = 30;

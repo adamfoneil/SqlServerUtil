@@ -151,7 +151,7 @@ namespace SqlIntegration.Library
                     mvi = await GetMultiValueInsertAsync(destObject, data, mvi.StartRow, batchSize, destConnection, options);
                     if (mvi.RowsInserted == 0) break;
                     await destConnection.ExecuteAsync(mvi.Sql);
-                    options?.Progress?.Report(new BulkInsertProgress() { TotalRows = totalRows, RowsCompleted = mvi.StartRow + mvi.RowsInserted, CurrentOffset = page });
+                    options?.Progress?.Report(new RowOperationProgress() { TotalRows = totalRows, RowsCompleted = mvi.StartRow + mvi.RowsInserted, CurrentOffset = page });
                 } while (true);
             }
             finally
