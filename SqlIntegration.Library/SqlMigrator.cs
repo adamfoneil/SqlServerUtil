@@ -1,4 +1,5 @@
-﻿using Dapper;
+﻿using AdoUtil;
+using Dapper;
 using Dapper.CX.SqlServer;
 using SqlIntegration.Library.Extensions;
 using SqlIntegration.Library.Models;
@@ -17,7 +18,8 @@ namespace SqlIntegration.Library
         private const string KeyMapTableName = "KeyMap";
 
         private SqlMigrator() 
-        {             
+        {
+            // can't create migrator directly, use InitializeAsync instead
         }        
 
         private static Dictionary<Type, KeyMapTableInfo> SupportedIdentityTypes
@@ -83,28 +85,44 @@ namespace SqlIntegration.Library
             }
         }
 
+        public async Task CopyRowsSelfAsync(
+            SqlConnection connection,
+            string fromSchema, string fromTable, string identityColumn,
+            string criteria = null, object parameters = null,
+            Dictionary<string, string> mapForeignKeys = null,
+            Dictionary<string, object> setColumns = null)
+        {
+            string query = $"SELECT * FROM [{fromSchema}].[{fromTable}]";            
+            if (!string.IsNullOrEmpty(criteria)) query += " WHERE " + criteria;
+
+            var results = await connection.QueryAsync(query, parameters);
+            var dataTable = results.ToDataTable();
+
+            await CopyRowsAsync(connection, dataTable, identityColumn, fromSchema, fromTable, mapForeignKeys, setColumns);
+        }
+
         public async Task CopyRowsAsync(
-            SqlConnection connection, 
-            string schema, string tableName, DataTable dataTable, string identityColumn, 
+            SqlConnection connection,
+            DataTable fromDataTable, string identityColumn, string intoSchema, string intoTable,
             Dictionary<string, string> mapForeignKeys = null,
             Dictionary<string, object> setColumns = null)
         {
             var mappingCmd = await SqlServerCmd.FromTableSchemaAsync(connection, Schema, GetTableName());            
-            mappingCmd["Schema"] = schema;
-            mappingCmd["TableName"] = tableName;
+            mappingCmd["Schema"] = intoSchema;
+            mappingCmd["TableName"] = intoTable;
 
-            var cmd = await SqlServerCmd.FromTableSchemaAsync(connection, schema, tableName);
+            var cmd = await SqlServerCmd.FromTableSchemaAsync(connection, intoSchema, intoTable);
             
             await ValidateForeignKeyMappingAsync(connection, mapForeignKeys);
             ValidateSetColumns(setColumns, cmd);            
             EnsureNoColumnNameOverlap(mapForeignKeys, setColumns);
 
-            foreach (DataRow dataRow in dataTable.Rows)
+            foreach (DataRow dataRow in fromDataTable.Rows)
             {
                 TIdentity sourceId = dataRow.Field<TIdentity>(identityColumn);
                 
                 // if this row has already been copied, then skip
-                if (await IsRowMappedAsync(connection, new DbObject(schema, tableName), sourceId)) continue;
+                if (await IsRowMappedAsync(connection, new DbObject(intoSchema, intoTable), sourceId)) continue;
                 
                 cmd.BindDataRow(dataRow);
                 await MapForeignKeysAsync(connection, dataRow, mapForeignKeys, cmd);
@@ -182,7 +200,8 @@ namespace SqlIntegration.Library
 
         private void SetColumns(DataRow dataRow, Dictionary<string, object> setColumns, SqlServerCmd cmd)
         {
-            throw new NotImplementedException();
+            if (setColumns == null) return;
+            foreach (var kp in setColumns) cmd[kp.Key] = kp.Value;
         }
 
         private async Task<TIdentity> GetNewIdAsync(SqlConnection cn, DbObject dbObject, TIdentity sourceId)
