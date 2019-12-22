@@ -58,7 +58,7 @@ namespace Testing
                 var param = new { id = 3 };
 
                 // copy one parent with a new name that appends the word " - copy"
-                migrator.CopyRowsSelfAsync(cn, "dbo", "Parent", "Id", 
+                migrator.CopySelfAsync(cn, "dbo", "Parent", "Id", 
                     "[Id]=@id", param, 
                     onEachRow: (cmd, row) =>
                     {
@@ -66,7 +66,7 @@ namespace Testing
                     }).Wait();
 
                 // copy the child rows
-                migrator.CopyRowsSelfAsync(cn, "dbo", "Child", "Id", 
+                migrator.CopySelfAsync(cn, "dbo", "Child", "Id", 
                     "[ParentId]=@id", param, 
                     mapForeignKeys: new Dictionary<string, string>()
                     {
@@ -74,7 +74,7 @@ namespace Testing
                     }).Wait();
 
                 // copy grand child rows
-                migrator.CopyRowsSelfAsync(cn, "dbo", "GrandChild", "Id", 
+                migrator.CopySelfAsync(cn, "dbo", "GrandChild", "Id", 
                     "[ParentId] IN (SELECT [Id] FROM [dbo].[Child] WHERE [ParentId]=@id)", param,
                     mapForeignKeys: new Dictionary<string, string>()
                     {

@@ -94,19 +94,25 @@ namespace SqlIntegration.Library
             }
         }
 
-        public async Task CopyRowsSelfAsync(
+        public async Task CopySelfAsync(
             SqlConnection connection,
             string fromSchema, string fromTable, string identityColumn,
             string criteria = null, object parameters = null,
             Dictionary<string, string> mapForeignKeys = null,
             Action<SqlServerCmd, DataRow> onEachRow = null)
         {
-            string query = $"SELECT * FROM [{fromSchema}].[{fromTable}]";            
-            if (!string.IsNullOrEmpty(criteria)) query += " WHERE " + criteria;
-
-            var dataTable = await connection.QueryTableAsync(query, parameters);            
+            DataTable dataTable = await GetSourceDataAsync(connection, fromSchema, fromTable, criteria, parameters);
 
             await CopyRowsAsync(connection, dataTable, identityColumn, fromSchema, fromTable, mapForeignKeys, onEachRow);
+        }
+
+        private static async Task<DataTable> GetSourceDataAsync(SqlConnection connection, string fromSchema, string fromTable, string criteria, object parameters)
+        {
+            string query = $"SELECT * FROM [{fromSchema}].[{fromTable}]";
+            if (!string.IsNullOrEmpty(criteria)) query += " WHERE " + criteria;
+
+            var dataTable = await connection.QueryTableAsync(query, parameters);
+            return dataTable;
         }
 
         public async Task CopyRowsAsync(
@@ -158,18 +164,7 @@ namespace SqlIntegration.Library
                     throw;
                 }
             }
-        }
-
-        private async Task DeleteExistingMappingAsync(SqlConnection connection, string schema, string table, TIdentity sourceId, TIdentity newId)
-        {
-            await connection.ExecuteAsync(
-                $"DELETE [{Schema}].[{GetTableName()}] WHERE [Schema]=@schema AND [TableName]=@table AND [SourceId]=@sourceId",
-                new { schema, table, sourceId });
-
-            await connection.ExecuteAsync(
-                $"DELETE [{Schema}].[{GetTableName()}] WHERE [Schema]=@schema AND [TableName]=@table AND [NewId]=@newId",
-                new { schema, table, newId });
-        }
+        }        
 
         private async Task ValidateForeignKeyMappingAsync(SqlConnection connection, Dictionary<string, string> mapForeignKeys)
         {
@@ -186,13 +181,7 @@ namespace SqlIntegration.Library
                 string invalidKeys = string.Join(", ", invalid);
                 throw new Exception($"There are one or more unrecognized foreign key mappings: {invalidKeys}");
             }
-        }
-
-        private void SetColumns(DataRow dataRow, Dictionary<string, object> setColumns, SqlServerCmd cmd)
-        {
-            if (setColumns == null) return;
-            foreach (var kp in setColumns) cmd[kp.Key] = kp.Value;
-        }
+        }        
 
         private async Task<TIdentity> GetNewIdAsync(SqlConnection cn, DbObject dbObject, TIdentity sourceId)
         {
@@ -236,11 +225,13 @@ namespace SqlIntegration.Library
         }
 
         public async Task CopyAcrossAsync(
-            SqlConnection fromConnection, SqlConnection toConnection, string schema, string tableName, string criteria = null, object parameters = null,
-            Dictionary<string, string> setForeignKeys = null,
-            Dictionary<string, object> setColumns = null)
+            SqlConnection fromConnection, string fromSchema, string fromTable, string identityColumn, SqlConnection toConnection, string criteria = null, object parameters = null,
+            Dictionary<string, string> mapForeignKeys = null,
+            Action<SqlServerCmd, DataRow> onEachRow = null)
         {
-            throw new NotImplementedException();
+            var dataTable = await GetSourceDataAsync(fromConnection, fromSchema, fromTable, criteria, parameters);
+
+            await CopyRowsAsync(toConnection, dataTable, identityColumn, fromSchema, fromTable, mapForeignKeys, onEachRow);
         }
     }
 }
