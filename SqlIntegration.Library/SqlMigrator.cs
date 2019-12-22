@@ -1,6 +1,7 @@
 ﻿using AdoUtil;
 using Dapper;
 using Dapper.CX.SqlServer;
+using DataTables.Library;
 using SqlIntegration.Library.Extensions;
 using SqlIntegration.Library.Models;
 using System;
@@ -85,7 +86,7 @@ namespace SqlIntegration.Library
             }
         }
 
-        public async Task CopyRowsSelfAsync<T>(
+        public async Task CopyRowsSelfAsync(
             SqlConnection connection,
             string fromSchema, string fromTable, string identityColumn,
             string criteria = null, object parameters = null,
@@ -95,8 +96,7 @@ namespace SqlIntegration.Library
             string query = $"SELECT * FROM [{fromSchema}].[{fromTable}]";            
             if (!string.IsNullOrEmpty(criteria)) query += " WHERE " + criteria;
 
-            var results = await connection.QueryAsync<T>(query, parameters);
-            var dataTable = results.ToDataTable();
+            var dataTable = await connection.QueryTableAsync(query, parameters);            
 
             await CopyRowsAsync(connection, dataTable, identityColumn, fromSchema, fromTable, mapForeignKeys, onEachRow);
         }
@@ -141,8 +141,18 @@ namespace SqlIntegration.Library
                     }
                     catch (Exception exc)
                     {
-                        // if there's a mapping problem, we need to quit right away and diagnose
-                        throw new Exception($"Error mapping source Id {sourceId} to new Id {newId}: {exc.Message}");
+                        await DeleteExistingMappingAsync(connection, intoSchema, intoTable, sourceId, newId);
+
+                        try
+                        {
+                            // try the mapping insert again
+                            await mappingCmd.InsertAsync<TIdentity>(connection);
+                        }
+                        catch
+                        {
+                            // if the delete/re-insert didn't work, we need to quit right away and diagnose
+                            throw new Exception($"Error mapping source Id {sourceId} to new Id {newId}: {exc.Message}");
+                        }                                                
                     }
                 }
                 catch (Exception exc)
@@ -151,6 +161,17 @@ namespace SqlIntegration.Library
                     throw;
                 }
             }
+        }
+
+        private async Task DeleteExistingMappingAsync(SqlConnection connection, string schema, string table, TIdentity sourceId, TIdentity newId)
+        {
+            await connection.ExecuteAsync(
+                $"DELETE [{Schema}].[{GetTableName()}] WHERE [Schema]=@schema AND [TableName]=@table AND [SourceId]=@sourceId",
+                new { schema, table, sourceId });
+
+            await connection.ExecuteAsync(
+                $"DELETE [{Schema}].[{GetTableName()}] WHERE [Schema]=@schema AND [TableName]=@table AND [NewId]=@newId",
+                new { schema, table, newId });
         }
 
         private async Task ValidateForeignKeyMappingAsync(SqlConnection connection, Dictionary<string, string> mapForeignKeys)

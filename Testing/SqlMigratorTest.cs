@@ -13,6 +13,7 @@ using SqlIntegration.Library.Classes;
 using System.Data.SqlClient;
 using Dapper.CX.Classes;
 using Dapper.CX.Extensions;
+using DataTables.Library;
 
 namespace Testing
 {
@@ -42,8 +43,7 @@ namespace Testing
         {
             using (var cn = LocalDb.GetConnection(dbName, SampleModel()))
             {
-                CreateRandomData(cn);
-                cn.Execute("TRUNCATE TABLE [migrate].[KeyMap_int]");
+                CreateRandomData(cn);                
                 
                 var migrator = SqlMigrator<int>.InitializeAsync(cn).Result;
 
@@ -51,18 +51,28 @@ namespace Testing
                 var param = new { id = 3 };
 
                 // copy one parent with a new name that appends the word " - copy"
-                migrator.CopyRowsSelfAsync<Parent>(cn, "dbo", "Parent", "Id", "[Id]=@id", param, 
+                migrator.CopyRowsSelfAsync(cn, "dbo", "Parent", "Id", 
+                    "[Id]=@id", param, 
                     onEachRow: (cmd, row) =>
                     {
                         cmd["Name"] = row["Name"].ToString() + " - copy";
                     }).Wait();
 
                 // copy the child rows
-                migrator.CopyRowsSelfAsync<Child>(cn, "dbo", "Child", "Id", "[ParentId]=@id", param, 
+                migrator.CopyRowsSelfAsync(cn, "dbo", "Child", "Id", 
+                    "[ParentId]=@id", param, 
                     mapForeignKeys: new Dictionary<string, string>()
-                {
-                    { "ParentId", "dbo.Parent" }
-                }).Wait();                
+                    {
+                        { "ParentId", "dbo.Parent" }
+                    }).Wait();
+
+                // copy grand child rows
+                migrator.CopyRowsSelfAsync(cn, "dbo", "GrandChild", "Id", 
+                    "[ParentId] IN (SELECT [Id] FROM [dbo].[Child] WHERE [ParentId]=@id)", param,
+                    mapForeignKeys: new Dictionary<string, string>()
+                    {
+                        { "ParentId", "dbo.Child" }
+                    }).Wait();
             }
         }
 
@@ -98,10 +108,29 @@ namespace Testing
                     SkipIdentityColumn = "Id"
                 }).Wait();
             });
+
+            int[] childIds = cn.Query<int>("SELECT [Id] FROM [dbo].[Child]").ToArray();
+
+            tdg.Generate<Child>(1000, (c) =>
+            {
+                c.ParentId = tdg.Random(childIds);
+                suffix++;
+                c.Name = tdg.Random(Source.WidgetName) + "." + suffix.ToString();
+            }, (rows) =>
+            {
+                var data = rows.ToDataTable();
+                BulkInsert.ExecuteAsync(data, cn, "dbo.GrandChild", 25, new BulkInsertOptions()
+                {
+                    SkipIdentityColumn = "Id"
+                }).Wait();
+            });
         }
 
         private IEnumerable<InitializeStatement> SampleModel()
         {
+            // note that I don't use real FKs in this model because it would break the object drops,
+            // and they aren't needed for testing
+
             yield return new InitializeStatement(
                 "dbo.Parent",
                 "DROP TABLE %obj%",
@@ -109,8 +138,7 @@ namespace Testing
                     [Name] nvarchar(50) NOT NULL,
                     [Id] int identity(1,1) PRIMARY KEY
                 )");
-
-            // we don't need a real FK for this model
+            
             yield return new InitializeStatement(
                 "dbo.Child",
                 "DROP TABLE %obj%",
@@ -119,6 +147,16 @@ namespace Testing
                     [Name] nvarchar(50),                    
                     [Id] int identity(1,1) PRIMARY KEY,
                     CONSTRAINT [U_Child_Parent] UNIQUE ([ParentId], [Name])
+                )");
+
+            yield return new InitializeStatement(
+                "dbo.GrandChild",
+                "DROP TABLE %obj%",
+                @"CREATE TABLE %obj% (
+                    [ParentId] int NOT NULL,
+                    [Name] nvarchar(50),
+                    [Id] int identity(1,1) PRIMARY KEY,
+                    CONSTRAINT [U_GrandChild_Parent] UNIQUE ([ParentId], [Name])
                 )");
         }
     }

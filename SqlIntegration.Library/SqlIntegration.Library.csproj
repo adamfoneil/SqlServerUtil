@@ -25,6 +25,7 @@
     <PackageReference Include="Dapper.CX.Base" Version="1.0.6" />
     <PackageReference Include="Dapper.CX.SqlServer" Version="1.0.4" />
     <PackageReference Include="Dapper.QX" Version="1.0.0" />
+    <PackageReference Include="DataTables.Library" Version="2.0.1" />
     <PackageReference Include="System.Data.SqlClient" Version="4.7.0" />
   </ItemGroup>
 
