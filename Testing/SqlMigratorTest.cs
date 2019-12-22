@@ -46,17 +46,18 @@ namespace Testing
                 
                 var migrator = SqlMigrator<int>.InitializeAsync(cn).Result;
 
+                // just an arbitrary Id to start with
                 var param = new { id = 3 };
 
-                // copy one parent (arbitrary Id) with a new name that appends the word " - copy"
-                migrator.CopyRowsSelfAsync(cn, "dbo", "Parent", "Id", "[Id]=@id", param, 
-                    setColumns: new Dictionary<string, object>()
-                {
-                    { "Name", new SqlExpression("[Name] + ' - copy'") }
-                }).Wait();
+                // copy one parent with a new name that appends the word " - copy"
+                migrator.CopyRowsSelfAsync<Parent>(cn, "dbo", "Parent", "Id", "[Id]=@id", param, 
+                    onEachRow: (cmd, row) =>
+                    {
+                        cmd["Name"] = row["Name"].ToString() + " - copy";
+                    }).Wait();
 
                 // copy the child rows
-                migrator.CopyRowsSelfAsync(cn, "dbo", "Child", "Id", "[ParentId]=@id", param, 
+                migrator.CopyRowsSelfAsync<Child>(cn, "dbo", "Child", "Id", "[ParentId]=@id", param, 
                     mapForeignKeys: new Dictionary<string, string>()
                 {
                     { "ParentId", "dbo.Parent" }

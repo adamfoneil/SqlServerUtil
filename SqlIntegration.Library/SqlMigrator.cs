@@ -85,37 +85,36 @@ namespace SqlIntegration.Library
             }
         }
 
-        public async Task CopyRowsSelfAsync(
+        public async Task CopyRowsSelfAsync<T>(
             SqlConnection connection,
             string fromSchema, string fromTable, string identityColumn,
             string criteria = null, object parameters = null,
             Dictionary<string, string> mapForeignKeys = null,
-            Dictionary<string, object> setColumns = null)
+            Action<SqlServerCmd, DataRow> onEachRow = null)
         {
             string query = $"SELECT * FROM [{fromSchema}].[{fromTable}]";            
             if (!string.IsNullOrEmpty(criteria)) query += " WHERE " + criteria;
 
-            var results = await connection.QueryAsync(query, parameters);
+            var results = await connection.QueryAsync<T>(query, parameters);
             var dataTable = results.ToDataTable();
 
-            await CopyRowsAsync(connection, dataTable, identityColumn, fromSchema, fromTable, mapForeignKeys, setColumns);
+            await CopyRowsAsync(connection, dataTable, identityColumn, fromSchema, fromTable, mapForeignKeys, onEachRow);
         }
 
         public async Task CopyRowsAsync(
             SqlConnection connection,
             DataTable fromDataTable, string identityColumn, string intoSchema, string intoTable,
             Dictionary<string, string> mapForeignKeys = null,
-            Dictionary<string, object> setColumns = null)
+            Action<SqlServerCmd, DataRow> onEachRow = null)
         {
             var mappingCmd = await SqlServerCmd.FromTableSchemaAsync(connection, Schema, GetTableName());            
             mappingCmd["Schema"] = intoSchema;
             mappingCmd["TableName"] = intoTable;
+            mappingCmd["Timestamp"] = DateTime.UtcNow;
 
             var cmd = await SqlServerCmd.FromTableSchemaAsync(connection, intoSchema, intoTable);
             
-            await ValidateForeignKeyMappingAsync(connection, mapForeignKeys);
-            ValidateSetColumns(setColumns, cmd);            
-            EnsureNoColumnNameOverlap(mapForeignKeys, setColumns);
+            await ValidateForeignKeyMappingAsync(connection, mapForeignKeys);            
 
             foreach (DataRow dataRow in fromDataTable.Rows)
             {
@@ -126,17 +125,18 @@ namespace SqlIntegration.Library
                 
                 cmd.BindDataRow(dataRow);
                 await MapForeignKeysAsync(connection, dataRow, mapForeignKeys, cmd);
-                SetColumns(dataRow, setColumns, cmd);
+                onEachRow?.Invoke(cmd, dataRow);
 
                 try
                 {
                     // copy the source row to the destination connection
+                    var sql = cmd.GetInsertStatement();
                     TIdentity newId = await cmd.InsertAsync<TIdentity>(connection);
 
                     try
                     {
                         mappingCmd["SourceId"] = sourceId;
-                        mappingCmd["NewId"] = newId;
+                        mappingCmd["NewId"] = newId;                        
                         await mappingCmd.InsertAsync<TIdentity>(connection);
                     }
                     catch (Exception exc)
@@ -187,7 +187,7 @@ namespace SqlIntegration.Library
 
             var validSources = await connection.QueryAsync<string>(
                 $@"SELECT [Schema] + '.' + [TableName] AS [Table]
-                FROM {GetTableName()}
+                FROM [{Schema}].[{GetTableName()}]
                 GROUP BY [Schema], [TableName]");
 
             var invalid = mapForeignKeys.Values.Except(validSources);
