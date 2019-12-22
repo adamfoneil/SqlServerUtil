@@ -43,6 +43,7 @@ namespace Testing
             using (var cn = LocalDb.GetConnection(dbName, SampleModel()))
             {
                 CreateRandomData(cn);
+                cn.Execute("TRUNCATE TABLE [migrate].[KeyMap_int]");
                 
                 var migrator = SqlMigrator<int>.InitializeAsync(cn).Result;
 

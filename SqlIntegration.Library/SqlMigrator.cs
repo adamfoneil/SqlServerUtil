@@ -153,34 +153,6 @@ namespace SqlIntegration.Library
             }
         }
 
-        private void EnsureNoColumnNameOverlap(Dictionary<string, string> mapForeignKeys, Dictionary<string, object> setColumns)
-        {
-            if (mapForeignKeys == null) return;
-            if (setColumns == null) return;
-
-            var overlap = from fk in mapForeignKeys.Keys
-                          join col in setColumns.Keys on fk.ToLower() equals col.ToLower()
-                          select fk;
-
-            if (overlap.Any())
-            {
-                string keyList = string.Join(", ", overlap);
-                throw new Exception($"Can't have overlapping foreign keys and columns: {keyList}");
-            }
-        }
-
-        private void ValidateSetColumns(Dictionary<string, object> setColumns, SqlServerCmd cmd)
-        {
-            if (setColumns == null) return;
-
-            var invalid = setColumns.Keys.Except(cmd.Keys);
-            if (invalid.Any())
-            {
-                string invalidCols = string.Join(", ", invalid);
-                throw new Exception($"There are one or more unrecognized set columns: {invalidCols}");
-            }
-        }
-
         private async Task ValidateForeignKeyMappingAsync(SqlConnection connection, Dictionary<string, string> mapForeignKeys)
         {
             if (mapForeignKeys == null) return;
