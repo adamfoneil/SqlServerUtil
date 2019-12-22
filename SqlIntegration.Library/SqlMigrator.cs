@@ -86,6 +86,14 @@ namespace SqlIntegration.Library
             }
         }
 
+        public async Task DeleteMappingsAsync(SqlConnection connection, IEnumerable<DbObject> dbObjects)
+        {
+            foreach (var obj in dbObjects)
+            {
+                await connection.ExecuteAsync($"DELETE [{Schema}].[{GetTableName()}] WHERE [Schema]=@schema AND [TableName]=@name", obj);
+            }
+        }
+
         public async Task CopyRowsSelfAsync(
             SqlConnection connection,
             string fromSchema, string fromTable, string identityColumn,
@@ -140,19 +148,8 @@ namespace SqlIntegration.Library
                         await mappingCmd.InsertAsync<TIdentity>(connection);
                     }
                     catch (Exception exc)
-                    {
-                        await DeleteExistingMappingAsync(connection, intoSchema, intoTable, sourceId, newId);
-
-                        try
-                        {
-                            // try the mapping insert again
-                            await mappingCmd.InsertAsync<TIdentity>(connection);
-                        }
-                        catch
-                        {
-                            // if the delete/re-insert didn't work, we need to quit right away and diagnose
-                            throw new Exception($"Error mapping source Id {sourceId} to new Id {newId}: {exc.Message}");
-                        }                                                
+                    {                        
+                        throw new Exception($"Error mapping source Id {sourceId} to new Id {newId}: {exc.Message}");                                                                        
                     }
                 }
                 catch (Exception exc)

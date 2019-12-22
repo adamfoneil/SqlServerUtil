@@ -47,6 +47,13 @@ namespace Testing
                 
                 var migrator = SqlMigrator<int>.InitializeAsync(cn).Result;
 
+                migrator.DeleteMappingsAsync(cn, new DbObject[]
+                {
+                    DbObject.Parse("dbo.Parent"),
+                    DbObject.Parse("dbo.Child"),
+                    DbObject.Parse("dbo.GrandChild")
+                }).Wait();
+
                 // just an arbitrary Id to start with
                 var param = new { id = 3 };
 
@@ -73,7 +80,48 @@ namespace Testing
                     {
                         { "ParentId", "dbo.Child" }
                     }).Wait();
+
+                int mappedParentId = cn.QuerySingle<int>(
+                    "SELECT [NewId] FROM [migrate].[KeyMap_int] WHERE [Schema]='dbo' AND [TableName]='Parent' AND [SourceId]=@sourceId",
+                    new { sourceId = param.id });
+
+                Assert.IsTrue(ChildrenAreSame(cn, param.id, mappedParentId));
+                Assert.IsTrue(GrandChildrenAreSame(cn, param.id, mappedParentId));
+                //Assert.IsTrue(NoCrossedLineage(cn, param.id));
             }
+        }
+
+        private bool GrandChildrenAreSame(SqlConnection cn, int sourceParentId, int newParentId)
+        {
+            string[] GetGrandChildNames(int innerParentId)
+            {
+                return cn.Query<string>(
+                    @"SELECT [gc].[Name] 
+                    FROM [dbo].[Child] [c] INNER JOIN [dbo].[GrandChild] [gc] ON [c].[Id]=[gc].[ParentId]
+                    WHERE [c].[ParentId]=@innerParentId 
+                    ORDER BY [gc].[Name]",
+                    new { innerParentId }).ToArray();
+            }
+
+            var sourceNames = GetGrandChildNames(sourceParentId);
+            var newNames = GetGrandChildNames(newParentId);
+
+            return sourceNames.SequenceEqual(newNames);
+        }
+
+        private bool ChildrenAreSame(SqlConnection cn, int sourceParentId, int newParentId)
+        {
+            string[] GetChildNames(int innerParentId)
+            {
+                return cn.Query<string>(
+                    "SELECT [Name] FROM [dbo].[Child] WHERE [ParentId]=@innerParentId ORDER BY [Name]",
+                    new { innerParentId }).ToArray();
+            }
+
+            var sourceNames = GetChildNames(sourceParentId);
+            var newNames = GetChildNames(newParentId);
+
+            return sourceNames.SequenceEqual(newNames);
         }
 
         private static void CreateRandomData(SqlConnection cn)
