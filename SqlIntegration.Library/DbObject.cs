@@ -24,7 +24,7 @@ namespace SqlIntegration.Library
         public static string Delimited(string name, string defaultSchema = "dbo")
         {
             var obj = Parse(name, defaultSchema);
-            return $"[{obj.Schema}].[{obj.Name}]";
+            return obj.Delimited();
         }
 
         public static DbObject Parse(string name, string defaultSchema = "dbo")
@@ -73,6 +73,11 @@ namespace SqlIntegration.Library
             {
                 return base.GetHashCode();
             }            
+        }
+
+        public string Delimited()
+        {
+            return $"[{Schema}].[{Name}]";
         }
     }
 }

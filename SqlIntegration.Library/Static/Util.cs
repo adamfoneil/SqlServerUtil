@@ -20,10 +20,18 @@ namespace SqlIntegration.Library
             string sourceSchema, string sourceView, string destSchema, string destTable,
             params string[] keyColumns)
         {
-            var columns = await new ViewColumns() { SchemaName = sourceSchema, ViewName = sourceView }.ExecuteAsync(connection);
+            var columns = await new ViewColumns()
+            {
+                SchemaName = sourceSchema,
+                ViewName = sourceView
+            }.ExecuteAsync(connection);
 
             List<string> members = new List<string>();
-            members.AddRange(columns.Select(col => col.GetSyntax()));
+            members.AddRange(columns.Select(col =>
+            {
+                bool isKeyColumn = keyColumns?.Contains(col.Name) ?? false;
+                return col.GetSyntax(isKeyColumn);
+            }));
 
             if (keyColumns?.Any() ?? false)
             {
