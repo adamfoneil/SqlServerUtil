@@ -21,6 +21,12 @@ namespace SqlIntegration.Library
             Name = obj.Name;
         }
 
+        public static string Delimited(string name, string defaultSchema = "dbo")
+        {
+            var obj = Parse(name, defaultSchema);
+            return $"[{obj.Schema}].[{obj.Name}]";
+        }
+
         public static DbObject Parse(string name, string defaultSchema = "dbo")
         {
             var parts = name.Split(new char[] { '.' }, StringSplitOptions.RemoveEmptyEntries);
@@ -46,13 +52,27 @@ namespace SqlIntegration.Library
 
         public override bool Equals(object obj)
         {
-            var test = obj as DbObject;
-            return (obj != null) ? test.Schema.ToLower().Equals(Schema.ToLower()) && test.Name.ToLower().Equals(Name.ToLower()) : false;
+            try
+            {
+                var test = obj as DbObject;
+                return (obj != null) ? test.Schema.ToLower().Equals(Schema.ToLower()) && test.Name.ToLower().Equals(Name.ToLower()) : false;
+            }
+            catch 
+            {
+                return false;
+            }
         }
 
         public override int GetHashCode()
         {
-            return (Schema.ToLower() + "." + Name.ToLower()).GetHashCode();
+            try
+            {
+                return (Schema.ToLower() + "." + Name.ToLower()).GetHashCode();
+            }
+            catch 
+            {
+                return base.GetHashCode();
+            }            
         }
     }
 }

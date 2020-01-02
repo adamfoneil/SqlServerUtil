@@ -20,7 +20,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="AdoUtil.Library" Version="1.1.1" />
     <PackageReference Include="Dapper" Version="2.0.30" />
     <PackageReference Include="Dapper.CX.Base" Version="1.0.6" />
     <PackageReference Include="Dapper.CX.SqlServer" Version="1.0.4" />

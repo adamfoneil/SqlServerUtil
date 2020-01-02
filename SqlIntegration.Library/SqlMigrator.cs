@@ -1,5 +1,4 @@
-﻿using AdoUtil;
-using Dapper;
+﻿using Dapper;
 using Dapper.CX.SqlServer;
 using DataTables.Library;
 using SqlIntegration.Library.Extensions;
