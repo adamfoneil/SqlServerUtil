@@ -47,7 +47,7 @@ namespace ConsoleTest
                         Progress = new Progress<BulkInsertProgress>(WriteProgress)
                     }).Wait();*/
 
-                    BulkInsert.ExecuteModuloAsync(cnLocal, DbObject.Parse("bi.AllDocuments"), "ID", 5, cnRemote, DbObject.Parse("dbo.AllDocuments"), 150, new BulkInsertOptions()
+                    BulkInsert.ChunkExecuteAsync(cnLocal, DbObject.Parse("bi.AllDocuments"), "ID", 5, cnRemote, DbObject.Parse("dbo.AllDocuments"), 150, new BulkInsertOptions()
                     {
                         TruncateFirst = true,
                         DisableIndexes = true,

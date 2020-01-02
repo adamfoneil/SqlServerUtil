@@ -31,8 +31,8 @@ namespace SqlIntegration.Library
             } while (true);
         }
 
-        public static async Task ExecuteModuloAsync(
-            SqlConnection sourceConnection, DbObject sourceObject, string moduloColumn, int moduloCount,
+        public static async Task ChunkExecuteAsync(
+            SqlConnection sourceConnection, DbObject sourceObject, string chunkColumn, int chunkCount,
             SqlConnection destConnection, DbObject destObject,
             int batchSize, BulkInsertOptions options = null)
         {
@@ -58,9 +58,9 @@ namespace SqlIntegration.Library
                     await ToggleIndexesAsync(destConnection, destObject, "DISABLE", options?.CommandTimeout ?? 30);
                 }
 
-                for (int chunk = 0; chunk < moduloCount; chunk++)
+                for (int chunk = 0; chunk < chunkCount; chunk++)
                 {
-                    string query = $"SELECT * FROM [{sourceObject.Schema}].[{sourceObject.Name}] WHERE [{moduloColumn}] % {moduloCount} = {chunk}";
+                    string query = $"SELECT * FROM [{sourceObject.Schema}].[{sourceObject.Name}] WHERE [{chunkColumn}] % {chunkCount} = {chunk}";
                     await ExecuteAsync(sourceConnection, query, destConnection, destObject, batchSize, options);
                 }
             }
