@@ -11,6 +11,24 @@ namespace Testing.Classes
         public string Region { get; set; }
         public int Year { get; set; }
         public string ItemClass { get; set; }
+
+        public override bool Equals(object obj)
+        {
+            try
+            {
+                var test = obj as SalesMaterializerResult;
+                return (test != null) ? test.Region.Equals(Region) && test.Year.Equals(Year) && test.ItemClass.Equals(ItemClass) : false;
+            }
+            catch 
+            {
+                return false;
+            }
+        }
+
+        public override int GetHashCode()
+        {
+            return (Region + Year.ToString() + ItemClass).GetHashCode();
+        }
     }
 
     public class SalesMaterializer : ViewMaterializer<SalesMaterializerResult>

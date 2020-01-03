@@ -34,6 +34,15 @@ namespace SqlIntegration.Library
         protected abstract string IntoTable { get; }
         protected abstract Task<IEnumerable<TKeyColumns>> GetChangesAsync(SqlConnection connection, long version);
 
+        /// <summary>
+        /// Remove version history for this view.
+        /// This is usually for unit testing only, do not use this without understanding implications.
+        /// </summary>
+        public async Task ClearVersionAsync(SqlConnection connection)
+        {
+            await connection.ExecuteAsync($"DELETE [{schema}].[{tableName}] WHERE [ViewName]=@viewName", new { viewName = SourceView });
+        }
+
         public async Task ExecuteAsync(SqlConnection connection)
         {
             var sourceObj = DbObject.Parse(SourceView);
@@ -41,7 +50,10 @@ namespace SqlIntegration.Library
             await InitializeAsync(connection, sourceObj, intoObj);
 
             var version = await GetSyncVersionAsync(connection, sourceObj);
-            var changes = await GetChangesAsync(connection, version);
+            
+            var changes = 
+                (version != 0) ? await GetChangesAsync(connection, version) :
+                await GetAllSourceRows(connection);
 
             string criteria = GetWhereClause();
             string columnList = await GetColumnListAsync(connection, sourceObj);
@@ -56,10 +68,15 @@ namespace SqlIntegration.Library
                     SELECT {columnList} 
                     FROM {sourceObj.Delimited()}
                     WHERE {criteria}", change);
-            }
+            }           
 
             long currentVersion = await GetCurrentVersionAsync(connection);
             await SetVersionAsync(connection, sourceObj, currentVersion);
+        }
+
+        private async Task<IEnumerable<TKeyColumns>> GetAllSourceRows(SqlConnection connection)
+        {
+            return await connection.QueryAsync<TKeyColumns>($"SELECT * FROM {DbObject.Delimited(SourceView)}");
         }
 
         private async Task InitializeAsync(SqlConnection connection, DbObject sourceView, DbObject intoTable)
@@ -127,5 +144,16 @@ namespace SqlIntegration.Library
                 return 0;
             }
         }
+
+        public async Task<bool> SourceViewEqualsResultTable(SqlConnection cn)
+        {
+            var props = typeof(TKeyColumns).GetProperties();
+            string orderBy = string.Join(", ", props.Select(pi => $"[{pi.Name}]"));
+
+            var viewSource = await cn.QueryAsync<TKeyColumns>($"SELECT * FROM {DbObject.Delimited(SourceView)} ORDER BY {orderBy}");
+            var tableData = await cn.QueryAsync<TKeyColumns>($"SELECT * FROM {DbObject.Delimited(IntoTable)} ORDER BY {orderBy}");
+            return viewSource.SequenceEqual(tableData);
+        }
+
     }
 }

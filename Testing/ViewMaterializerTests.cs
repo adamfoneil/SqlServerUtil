@@ -26,11 +26,22 @@ namespace Testing
                 CreateRandomSalesData(cn);
                 EnableChangeTracking(cn);
 
+                try { cn.Execute("TRUNCATE TABLE [rpt].[SalesHistoryTotals]"); } catch { };
+
                 // simulate a random-looking update
                 cn.Execute("UPDATE [SalesHistory] SET [Quantity]=[Quantity]+1 WHERE [Id] % 113 = 0");
 
                 var vm = new SalesMaterializer();
+                vm.ClearVersionAsync(cn).Wait();
                 vm.ExecuteAsync(cn).Wait();
+
+                // simulate another random-looking update
+                cn.Execute("UPDATE [SalesHistory] SET [Quantity]=[Quantity]+1 WHERE [Id] % 209 = 0");
+
+                vm.ExecuteAsync(cn).Wait();
+
+                // after a series of updates, the view data should be the same as the output table
+                Assert.IsTrue(vm.SourceViewEqualsResultTable(cn).Result);
             }
         }
 
