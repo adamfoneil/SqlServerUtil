@@ -1,6 +1,5 @@
 ﻿using Dapper;
 using Dapper.CX.SqlServer;
-using Dapper.QX;
 using SqlIntegration.Library.Extensions;
 using SqlIntegration.Library.Queries;
 using System;
@@ -145,6 +144,9 @@ namespace SqlIntegration.Library
             }
         }
 
+        /// <summary>
+        /// This is for unit testing only to be able to prove that the source view and output (i.e reporting) table are the same
+        /// </summary>
         public async Task<bool> SourceViewEqualsResultTable(SqlConnection cn)
         {
             var props = typeof(TKeyColumns).GetProperties();
