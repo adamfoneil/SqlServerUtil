@@ -20,5 +20,15 @@ namespace SqlIntegration.Library.Extensions
         {
             return await connection.RowExistsAsync("[sys].[tables] WHERE SCHEMA_NAME([schema_id])=@schema AND [name]=@tableName", new { schema, tableName });
         }
+
+        public static async Task<bool> ViewExistsAsync(this SqlConnection connection, DbObject dbObject)
+        {
+            return await connection.ViewExistsAsync(dbObject.Schema, dbObject.Name);
+        }
+
+        public static async Task<bool> ViewExistsAsync(this SqlConnection connection, string schema, string viewName)
+        {
+            return await connection.RowExistsAsync("[sys].[views] WHERE SCHEMA_NAME([schema_id])=@schema AND [name]=@viewName", new { schema, viewName });
+        }
     }
 }

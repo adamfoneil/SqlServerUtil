@@ -9,11 +9,16 @@ namespace SqlIntegration.Library.Queries
         public int Size { get; set; }
         public bool AllowNull { get; set; }
 
-        public string GetSyntax()
+        public string GetSyntax(bool forceNotNull = false)
         {
             string sizeText = (Size == -1) ? "max" : Size.ToString();
             string typeName = (Size != 0) ? $"{DataType}({sizeText})" : DataType;
-            string nullable = (AllowNull) ? "NULL" : "NOT NULL";
+            
+            string nullable = 
+                (forceNotNull) ? "NOT NULL" :
+                (AllowNull) ? "NULL" : 
+                "NOT NULL";
+
             return $"[{Name}] {typeName} {nullable}";
         }
     }
