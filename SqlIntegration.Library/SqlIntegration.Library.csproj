@@ -4,15 +4,17 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <Authors>Adam O'Neil</Authors>
     <Company>Adam O'Neil</Company>
-    <Product>SqlIntegration.Library</Product>
-    <Description>ETL library in progress for SQL Server, BulkInsert static class</Description>
-    <Version>0.2.5-alpha</Version>
+    <Product>SqlServer.Util.Library</Product>
+    <Description>A grab bag of SQL Server utilities: BulkInsert, SqlMigrator, and ViewMaterializer</Description>
+    <Version>1.0.0</Version>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
-    <RepositoryUrl>https://github.com/adamosoftware/SqlIntegration</RepositoryUrl>
-    <PackageProjectUrl>https://github.com/adamosoftware/SqlIntegration</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/adamosoftware/SqlServerUtil</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/adamosoftware/SqlServerUtil</PackageProjectUrl>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <PackageReleaseNotes>added BulkInsert.OffsetExecuteAsync</PackageReleaseNotes>
-    <AssemblyVersion>0.2.5.0</AssemblyVersion>
+    <PackageReleaseNotes></PackageReleaseNotes>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <PackageId>SqlServer.Util.Library</PackageId>
+    <Copyright>Copyright (c) Adam O'Neil 2020</Copyright>
   </PropertyGroup>
 
   <ItemGroup>
@@ -20,7 +22,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="AdoUtil.Library" Version="1.1.1" />
     <PackageReference Include="Dapper" Version="2.0.30" />
     <PackageReference Include="Dapper.CX.Base" Version="1.0.6" />
     <PackageReference Include="Dapper.CX.SqlServer" Version="1.0.4" />
