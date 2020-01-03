@@ -26,13 +26,18 @@ namespace Testing
                 CreateRandomSalesData(cn);
                 EnableChangeTracking(cn);
 
+                // make sure we're starting with an empty reporting table
                 try { cn.Execute("TRUNCATE TABLE [rpt].[SalesHistoryTotals]"); } catch { };
 
-                // simulate a random-looking update
+                // simulate a random-looking update of base table data
                 cn.Execute("UPDATE [SalesHistory] SET [Quantity]=[Quantity]+1 WHERE [Id] % 113 = 0");
 
                 var vm = new SalesMaterializer();
+
+                // this will ensure that the whole view is merged to the reporting table.
+                // you wouldn't do this in a real app because it would defeat the optimization
                 vm.ClearVersionAsync(cn).Wait();
+
                 vm.ExecuteAsync(cn).Wait();
 
                 // simulate another random-looking update
