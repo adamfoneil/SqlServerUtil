@@ -2,7 +2,7 @@ This project brings together several utility classes to do some nifty things wit
 
 Nuget package: **SqlServer.Util.Library**
 
-- **BulkInsert** makes it easy to copy rows lots of rows within or across connections.\
+- **BulkInsert** makes it easy to copy lots of rows within or across connections.\
 [walkthrough](https://github.com/adamosoftware/SqlIntegration/wiki/Using-BulkInsert) | [source](https://github.com/adamosoftware/SqlIntegration/blob/master/SqlIntegration.Library/BulkInsert.cs)
 
 - **SqlMigrator** provides cloning or "deep copy" functionality.\
