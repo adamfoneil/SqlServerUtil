@@ -19,14 +19,18 @@ namespace SqlIntegration.Library
         /// </summary>
         protected abstract Task<IEnumerable<T>> GetUpdatesAsync(SqlConnection connection, IEnumerable<T> currentRows);
 
-        protected abstract string BaseQuery { get; }
+        /// <summary>
+        /// where is data cached?
+        /// </summary>
+        protected abstract DbObject Table { get; }
 
         protected abstract TimeSpan RecalcAfter { get; }
 
         public async Task<IEnumerable<T>> QueryAsync(SqlConnection connection, string criteria, object parameters)
         {
             var results = new List<T>();
-            var queryResults = await connection.QueryAsync<T>(BaseQuery + " WHERE " + criteria, parameters);
+            // broken
+            var queryResults = await connection.QueryAsync<T>($"SELECT * FROM [{Table.Schema}].[{Table.Name}] WHERE");
 
             results.AddRange(queryResults.Where(row => !row.IsInvalid));
 
@@ -46,7 +50,9 @@ namespace SqlIntegration.Library
                 if (row.LastRefreshed.HasValue && RecalcAfter > TimeSpan.Zero)
                 {
                     return DateTime.UtcNow.Subtract(row.LastRefreshed.Value) > RecalcAfter;
-                }                    
+                }
+
+                return true;
             }
 
             return false;
