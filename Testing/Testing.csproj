@@ -8,7 +8,7 @@
 
   <ItemGroup>
     <PackageReference Include="AoTestDataGen" Version="1.0.5" />
-    <PackageReference Include="Dapper.QX" Version="1.0.0" />
+    <PackageReference Include="Dapper.QX" Version="1.0.6" />
     <PackageReference Include="DataTables.Library" Version="2.0.1" />
     <PackageReference Include="JsonSettings.Library" Version="1.0.15" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.3.0" />

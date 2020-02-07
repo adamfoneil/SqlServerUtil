@@ -3,7 +3,7 @@
 namespace SqlIntegration.Library.Interfaces
 {
     /// <summary>
-    /// describes a row that can be marked invalid
+    /// describes a row that can be marked invalid and tracked when last refreshed
     /// </summary>
     public interface ICacheRow
     {
