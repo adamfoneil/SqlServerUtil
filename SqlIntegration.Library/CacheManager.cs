@@ -13,16 +13,16 @@ namespace SqlIntegration.Library
     /// query helper that caches expensive query results in a temp table,
     /// automatically refreshing the underlying data when it becomes invalid
     /// </summary>
-    public abstract class CacheManager<T> where T : ICacheRow
+    public abstract class CacheManager<TRow, TKey> where TRow : ICacheRow
     {
         private readonly SqlServerIntCrudProvider _crudProvider = new SqlServerIntCrudProvider();
 
         /// <summary>
         /// how do we get the latest data for a list of Ts
         /// </summary>
-        protected abstract Task<IEnumerable<T>> GetUpdatesAsync(SqlConnection connection, IEnumerable<T> currentRows);
+        protected abstract Task<IEnumerable<TRow>> GetUpdatesAsync(SqlConnection connection, IEnumerable<TRow> currentRows);
 
-        protected abstract (string, IEnumerable<object>) GetKeyCriteria(IEnumerable<T> rows);
+        protected abstract (string, IEnumerable<object>) GetKeyCriteria(IEnumerable<TRow> rows);
 
         protected abstract string SourceView { get; }
 
@@ -30,11 +30,26 @@ namespace SqlIntegration.Library
 
         protected abstract TimeSpan RecalcAfter { get; }
 
-        public async Task<IEnumerable<T>> QueryAsync(SqlConnection connection, object criteria)
+        public async Task InvalidateAsync(SqlConnection connection, TKey id)
         {
-            var results = new List<T>();
+            throw new NotImplementedException();
+        }
+
+        public async Task InvalidRangeAsync(SqlConnection connection, IEnumerable<TKey> ids)
+        {
+            throw new NotImplementedException(); 
+        }
+
+        public async Task<TRow> GetAsync(SqlConnection connection, TKey id)
+        {
+            throw new NotImplementedException();
+        }
+
+        public async Task<IEnumerable<TRow>> QueryAsync(SqlConnection connection, object criteria)
+        {
+            var results = new List<TRow>();
             
-            var queryResults = await connection.QueryAsync<T>(_crudProvider.GetQuerySingleWhereStatement(typeof(T), criteria), criteria);
+            var queryResults = await connection.QueryAsync<TRow>(_crudProvider.GetQuerySingleWhereStatement(typeof(TRow), criteria), criteria);
 
             results.AddRange(queryResults.Where(row => IsValid(row)));
 
@@ -44,7 +59,7 @@ namespace SqlIntegration.Library
             return results;            
         }
 
-        private async Task<IEnumerable<T>> UpdateInvalidRowsAsync(SqlConnection connection, IEnumerable<T> queryResults)
+        private async Task<IEnumerable<TRow>> UpdateInvalidRowsAsync(SqlConnection connection, IEnumerable<TRow> queryResults)
         {
             var invalidRows = queryResults.Where(row => IsInvalid(row));
             
@@ -54,6 +69,7 @@ namespace SqlIntegration.Library
                 var updates = await GetUpdatesAsync(connection, invalidRows);
             }
 
+            throw new NotImplementedException();
         }
 
         private bool IsValid(ICacheRow row)
