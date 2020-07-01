@@ -1,54 +1,55 @@
 ﻿using SqlIntegration.Library.Interfaces;
 using System;
 using System.Collections.Generic;
-using System.Data;
+using System.Data.SqlClient;
 using System.Threading.Tasks;
 
 namespace SqlIntegration.Library
 {
-    public abstract class CacheManager<TModel> where TModel : ICacheRow
+    public abstract class CacheManager<TKeyColumns, TResult> where TResult : ICacheRow
     {
+        private readonly ChangeTrackingManager _ctm;
+        private readonly string _objectName;
+
+        public CacheManager(string schema, string tableName, string trackObjectName = null)
+        {
+            _ctm = new ChangeTrackingManager(schema, tableName);
+            _objectName = trackObjectName ?? typeof(TResult).Name;
+        }
+
         /// <summary>
         /// how much time can elapse on an invalid row before it must be updated?
         /// </summary>
         protected abstract TimeSpan AllowAging { get; }
 
         /// <summary>
-        /// Implement this to execute the calculation you want to cache.
-        /// This should perform an UPDATE or INSERT of data in the TModel target table.
-        /// Use this to call your functions, stored procedures, or other unique logic that's slow 
+        /// how do we query what's changed since the last cache update?
+        /// This should use FROM CHANGETABLE(CHANGES *tablename*, @version) AS [changes]
         /// </summary>
-        protected abstract Task UpdateCacheAsync(IDbConnection connection, TModel row, IDbTransaction txn = null);
+        protected abstract Task<IEnumerable<TKeyColumns>> GetChangesAsync(SqlConnection connection, long version);
 
         /// <summary>
-        /// Updates the IsValid flag and Timestamp in the database for a given TModel row
+        /// how do we updathe cache value?
         /// </summary>
-        protected abstract Task SetRowStatusAsync(IDbConnection connection, bool isValid, TModel row, IDbTransaction txn = null);
+        protected abstract Task UpdateCacheAsync(SqlConnection connection, TKeyColumns key);
 
-        /// <summary>
-        /// Marks a row as invalid.
-        /// Use this to indicate that a row is out of date, and should be updated the next time it's queried
-        /// </summary>
-        public async Task InvalidateRowAsync(IDbConnection connection, TModel row, IDbTransaction txn = null) => await SetRowStatusAsync(connection, false, row, txn);
+        public async Task UpdateAsync(SqlConnection connection)
+        {
+            await _ctm.InitializeAsync(connection);
 
-        /// <summary>
-        /// loops through TModel rows, updating the invalid rows, and returns all valid rows
-        /// </summary>
-        public async Task UpdateAsync(IDbConnection connection, IEnumerable<TModel> rows, IDbTransaction txn = null)
-        {            
-            foreach (var row in rows)
+            var version = await _ctm.GetVersionAsync(connection, _objectName);
+            var changes = await GetChangesAsync(connection, version);
+
+            foreach (TKeyColumns key in changes)
             {
-                if (!row.IsValid && OutOfDate(row))
-                {
-                    await UpdateCacheAsync(connection, row, txn);
-                    row.Timestamp = DateTime.UtcNow;
-                    await SetRowStatusAsync(connection, true, row, txn);
-                }                
+
             }
 
+            await _ctm.SetVersionAsync(connection, _objectName);
         }
+        
 
-        private bool OutOfDate(TModel row)
+        private bool OutOfDate(TResult row)
         {
             return DateTime.UtcNow.Subtract(row.Timestamp) > AllowAging;
         }
