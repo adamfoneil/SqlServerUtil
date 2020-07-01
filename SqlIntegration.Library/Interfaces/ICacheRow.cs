@@ -8,6 +8,6 @@ namespace SqlIntegration.Library.Interfaces
     public interface ICacheRow
     {
         bool IsValid { get; set; }
-        DateTime Timestamp { get; }
+        DateTime Timestamp { get; set; }
     }
 }

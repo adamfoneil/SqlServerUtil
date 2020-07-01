@@ -22,6 +22,7 @@ namespace Testing
         {
             using (var cn = LocalDb.GetConnection("ViewMaterializer", CreateObjects()))
             {
+                try { cn.Execute("DROP TABLE [vm].[SyncVersion]"); } catch { /* do nothing */ }
                 DisableChangeTracking(cn);
                 CreateRandomSalesData(cn);
                 EnableChangeTracking(cn);

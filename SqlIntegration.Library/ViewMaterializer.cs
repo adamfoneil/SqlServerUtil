@@ -1,5 +1,4 @@
 ﻿using Dapper;
-using Dapper.CX.SqlServer;
 using SqlIntegration.Library.Extensions;
 using SqlIntegration.Library.Queries;
 using System;
@@ -12,21 +11,11 @@ namespace SqlIntegration.Library
 {
     public abstract class ViewMaterializer<TKeyColumns>
     {
-        private const string schema = "vm";
-        private const string tableName = "SyncVersion";
+        private readonly ChangeTrackingManager _ctm;
 
-        private static async Task SetVersionAsync(SqlConnection connection, DbObject view, long version)
+        public ViewMaterializer()
         {
-            await new SqlServerCmd($"{schema}.{tableName}", "Id")
-            {
-                { "#ViewName", view.ToString() },
-                { "LatestVersion", version }
-            }.MergeAsync<int>(connection);
-        }
-
-        private static async Task<long> GetSyncVersionAsync(SqlConnection connection, DbObject view)
-        {
-            return await connection.QuerySingleOrDefaultAsync<long>($"SELECT [LatestVersion] FROM [{schema}].[{tableName}] WHERE [ViewName]=@viewName", new { viewName = view.ToString() });
+            _ctm = new ChangeTrackingManager("vm", "SyncVersion");
         }
         
         protected abstract string SourceView { get; }
@@ -39,7 +28,7 @@ namespace SqlIntegration.Library
         /// </summary>
         public async Task ClearVersionAsync(SqlConnection connection)
         {
-            await connection.ExecuteAsync($"DELETE [{schema}].[{tableName}] WHERE [ViewName]=@viewName", new { viewName = SourceView });
+            try { await _ctm.ClearAsync(connection, SourceView); } catch { /* do nothing */ }
         }
 
         public async Task ExecuteAsync(SqlConnection connection)
@@ -48,7 +37,7 @@ namespace SqlIntegration.Library
             var intoObj = DbObject.Parse(IntoTable);
             await InitializeAsync(connection, sourceObj, intoObj);
 
-            var version = await GetSyncVersionAsync(connection, sourceObj);
+            var version = await _ctm.GetVersionAsync(connection, sourceObj.ToString());
             
             var changes = 
                 (version != 0) ? await GetChangesAsync(connection, version) :
@@ -67,10 +56,9 @@ namespace SqlIntegration.Library
                     SELECT {columnList} 
                     FROM {sourceObj.Delimited()}
                     WHERE {criteria}", change);
-            }           
+            }
 
-            long currentVersion = await GetCurrentVersionAsync(connection);
-            await SetVersionAsync(connection, sourceObj, currentVersion);
+            await _ctm.SetVersionAsync(connection, sourceObj.ToString());
         }
 
         private async Task<IEnumerable<TKeyColumns>> GetAllSourceRows(SqlConnection connection)
@@ -95,23 +83,8 @@ namespace SqlIntegration.Library
                 string createTable = await Util.GetViewAsTableDefinitionAsync(connection, sourceView, intoTable, pkColumns?.ToArray());
                 await connection.ExecuteAsync(createTable);
             }
-            
-            if (!(await connection.SchemaExistsAsync(schema)))
-            {
-                await connection.ExecuteAsync($"CREATE SCHEMA [{schema}]");
-            }
-            
-            if (!(await connection.TableExistsAsync(schema, tableName)))
-            {
-                await connection.ExecuteAsync(
-                    $@"CREATE TABLE [{schema}].[{tableName}] (
-                        [ViewName] nvarchar(255) NOT NULL,
-                        [LatestVersion] bigint NOT NULL,
-                        [Id] int identity(1,1),
-                        CONSTRAINT [PK_{schema}_{tableName}] PRIMARY KEY ([ViewName]),
-                        CONSTRAINT [U_{schema}_{tableName}] UNIQUE ([Id])
-                    )");
-            }
+
+            await _ctm.InitializeAsync(connection);
         }
 
         private static async Task<string> GetColumnListAsync(SqlConnection connection, DbObject view)
@@ -132,18 +105,6 @@ namespace SqlIntegration.Library
             return string.Join(" AND ", props.Select(pi => $"[{pi.Name}]=@{pi.Name}"));
         }
 
-        private async Task<long> GetCurrentVersionAsync(SqlConnection connection)
-        {
-            try
-            {
-                return await connection.QuerySingleAsync<long>("SELECT CHANGE_TRACKING_CURRENT_VERSION()");
-            }
-            catch 
-            {
-                return 0;
-            }
-        }
-
         /// <summary>
         /// This is for unit testing only to be able to prove that the source view and output (i.e reporting) table are the same
         /// </summary>
@@ -156,6 +117,5 @@ namespace SqlIntegration.Library
             var tableData = await cn.QueryAsync<TKeyColumns>($"SELECT * FROM {DbObject.Delimited(IntoTable)} ORDER BY {orderBy}");
             return viewSource.SequenceEqual(tableData);
         }
-
     }
 }

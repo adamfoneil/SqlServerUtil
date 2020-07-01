@@ -1,7 +1,7 @@
 ﻿using SqlIntegration.Library.Interfaces;
+using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Linq;
 using System.Threading.Tasks;
 
 namespace SqlIntegration.Library
@@ -9,7 +9,13 @@ namespace SqlIntegration.Library
     public abstract class CacheManager<TModel> where TModel : ICacheRow
     {
         /// <summary>
+        /// how much time can elapse on an invalid row before it must be updated?
+        /// </summary>
+        protected abstract TimeSpan AllowAging { get; }
+
+        /// <summary>
         /// Implement this to execute the calculation you want to cache.
+        /// This should perform an UPDATE or INSERT of data in the TModel target table.
         /// Use this to call your functions, stored procedures, or other unique logic that's slow 
         /// </summary>
         protected abstract Task UpdateCacheAsync(IDbConnection connection, TModel row, IDbTransaction txn = null);
@@ -28,18 +34,23 @@ namespace SqlIntegration.Library
         /// <summary>
         /// loops through TModel rows, updating the invalid rows, and returns all valid rows
         /// </summary>
-        public async Task<IEnumerable<TModel>> UpdateAsync(IDbConnection connection, IEnumerable<TModel> rows, IDbTransaction txn = null)
-        {
-            List<TModel> results = new List<TModel>(rows.Where(row => row.IsValid));            
-            
-            foreach (var row in rows.Where(row => !row.IsValid))
+        public async Task UpdateAsync(IDbConnection connection, IEnumerable<TModel> rows, IDbTransaction txn = null)
+        {            
+            foreach (var row in rows)
             {
-                await UpdateCacheAsync(connection, row, txn);
-                await SetRowStatusAsync(connection, true, row, txn);
-                results.Add(row);
+                if (!row.IsValid && OutOfDate(row))
+                {
+                    await UpdateCacheAsync(connection, row, txn);
+                    row.Timestamp = DateTime.UtcNow;
+                    await SetRowStatusAsync(connection, true, row, txn);
+                }                
             }
 
-            return results;
+        }
+
+        private bool OutOfDate(TModel row)
+        {
+            return DateTime.UtcNow.Subtract(row.Timestamp) > AllowAging;
         }
     }
 }
