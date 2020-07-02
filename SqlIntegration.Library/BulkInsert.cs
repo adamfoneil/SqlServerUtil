@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace SqlIntegration.Library
@@ -119,6 +120,23 @@ namespace SqlIntegration.Library
             await ExecuteInnerAsync(destConnection, DbObject.Parse(destObject), batchSize, options, sourceData, 0);
         }
 
+        public static async Task<StringBuilder> GetSqlInsertStatements(string intoTable, DataTable dataTable, BulkInsertOptions options = null)
+        {
+            var obj = DbObject.Parse(intoTable);
+            return await GetSqlInsertStatements(obj, dataTable, options);
+        }
+
+        public static async Task<StringBuilder> GetSqlInsertStatements(DbObject intoTable, DataTable dataTable, BulkInsertOptions options = null)
+        {
+            StringBuilder result = new StringBuilder();
+
+            var mvi = await GetMultiValueInsertAsync(intoTable, dataTable, 0, dataTable.Rows.Count, options: options);
+            result.AppendLine(mvi.InsertStatement);
+            foreach (var value in mvi.Values) result.AppendLine(value);
+
+            return result;
+        }
+
         private static async Task<DataTable> GetOffsetDataAsync(SqlConnection connection, DbObject dbObject, string orderBy, int offsetSize, int page)
         {
             int offset = page * offsetSize;
@@ -172,7 +190,7 @@ namespace SqlIntegration.Library
         /// Generates a multi-value INSERT statement from a DataTable and returns the number of rows included
         /// </summary>
         private static async Task<MultiValueInsert> GetMultiValueInsertAsync(
-            DbObject intoTable, DataTable dataTable, int startRow, int batchSize, SqlConnection connection, BulkInsertOptions options = null)
+            DbObject intoTable, DataTable dataTable, int startRow, int batchSize, SqlConnection connection = null, BulkInsertOptions options = null)
         {
             if (dataTable.Rows.Count == 0) return new MultiValueInsert() { RowsInserted = 0 };
 
@@ -194,7 +212,7 @@ namespace SqlIntegration.Library
                 bool hasPredicate = options?.IncludeRowCallback != null;
 
                 bool includeRow = true;
-                if (hasPredicate)
+                if (hasPredicate && connection != null)
                 {
                     includeRow = await options.IncludeRowCallback.Invoke(connection, dataRow);
                 }
@@ -210,7 +228,9 @@ namespace SqlIntegration.Library
             {
                 Sql = baseCmd + string.Join(", ", values),
                 RowsInserted = rows,
-                StartRow = startRow + rows
+                StartRow = startRow + rows,
+                InsertStatement = baseCmd,
+                Values = values
             };
         }
 
