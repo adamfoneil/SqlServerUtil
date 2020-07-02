@@ -130,9 +130,21 @@ namespace SqlIntegration.Library
         {
             StringBuilder result = new StringBuilder();
 
+            bool identityInsert = options?.IdentityInsert ?? false && string.IsNullOrEmpty(options?.SkipIdentityColumn);
+
+            if (identityInsert)
+            {
+                result.AppendLine($"SET IDENTITY_INSERT [{intoTable.Schema}].[{intoTable.Name}] ON");
+            }
+
             var mvi = await GetMultiValueInsertAsync(intoTable, dataTable, 0, dataTable.Rows.Count, options: options);
             result.AppendLine(mvi.InsertStatement);
             foreach (var value in mvi.Values) result.AppendLine(value);
+
+            if (identityInsert)
+            {
+                result.AppendLine($"SET IDENTITY_INSERT [{intoTable.Schema}].[{intoTable.Name}] OFF");
+            }
 
             return result;
         }

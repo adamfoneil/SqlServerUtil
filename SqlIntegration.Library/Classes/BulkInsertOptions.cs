@@ -10,6 +10,7 @@ namespace SqlIntegration.Library.Classes
     {
         public bool TruncateFirst { get; set; }
         public string SkipIdentityColumn { get; set; }
+        public bool IdentityInsert { get; set; }
         public Func<SqlConnection, DataRow, Task<bool>> IncludeRowCallback { get; set; }
         public IProgress<RowOperationProgress> Progress { get; set; }
         public CancellationToken CancellationToken { get; set; }
