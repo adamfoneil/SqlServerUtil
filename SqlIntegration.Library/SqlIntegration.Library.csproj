@@ -6,7 +6,7 @@
     <Company>Adam O'Neil</Company>
     <Product>SqlServer.Util.Library</Product>
     <Description>A grab bag of SQL Server utilities: BulkInsert, SqlMigrator, and ViewMaterializer</Description>
-    <Version>1.0.2</Version>
+    <Version>1.0.3</Version>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <RepositoryUrl>https://github.com/adamfoneil/SqlServerUtil</RepositoryUrl>
     <PackageProjectUrl>https://github.com/adamfoneil/SqlServerUtil</PackageProjectUrl>
@@ -22,12 +22,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Dapper" Version="2.0.30" />
-    <PackageReference Include="Dapper.CX.Base" Version="1.0.6" />
-    <PackageReference Include="Dapper.CX.SqlServer" Version="1.0.4" />
-    <PackageReference Include="Dapper.QX" Version="1.0.0" />
-    <PackageReference Include="DataTables.Library" Version="2.0.1" />
-    <PackageReference Include="System.Data.SqlClient" Version="4.7.0" />
+    <PackageReference Include="Dapper" Version="2.0.35" />
+    <PackageReference Include="Dapper.CX.Base" Version="1.1.10" />
+    <PackageReference Include="Dapper.CX.SqlServer" Version="1.1.10" />
+    <PackageReference Include="Dapper.QX" Version="1.0.15" />
+    <PackageReference Include="DataTables.Library" Version="2.0.2" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="2.0.0" />
   </ItemGroup>
 
   <ItemGroup>

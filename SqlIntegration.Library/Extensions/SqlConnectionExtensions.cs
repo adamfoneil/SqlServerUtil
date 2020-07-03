@@ -1,5 +1,5 @@
 ﻿using Dapper.CX.Extensions;
-using System.Data.SqlClient;
+using Microsoft.Data.SqlClient;
 using System.Threading.Tasks;
 
 namespace SqlIntegration.Library.Extensions

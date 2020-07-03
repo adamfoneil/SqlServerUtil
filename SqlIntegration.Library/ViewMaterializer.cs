@@ -4,7 +4,7 @@ using SqlIntegration.Library.Extensions;
 using SqlIntegration.Library.Queries;
 using System;
 using System.Collections.Generic;
-using System.Data.SqlClient;
+using Microsoft.Data.SqlClient;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -19,14 +19,14 @@ namespace SqlIntegration.Library
         {
             await new SqlServerCmd($"{schema}.{tableName}", "Id")
             {
-                { "#ViewName", view.ToString() },
+                { "#ObjectName", view.ToString() },
                 { "LatestVersion", version }
             }.MergeAsync<int>(connection);
         }
 
         private static async Task<long> GetSyncVersionAsync(SqlConnection connection, DbObject view)
         {
-            return await connection.QuerySingleOrDefaultAsync<long>($"SELECT [LatestVersion] FROM [{schema}].[{tableName}] WHERE [ViewName]=@viewName", new { viewName = view.ToString() });
+            return await connection.QuerySingleOrDefaultAsync<long>($"SELECT [LatestVersion] FROM [{schema}].[{tableName}] WHERE [ObjectName]=@viewName", new { viewName = view.ToString() });
         }
         
         protected abstract string SourceView { get; }
@@ -39,7 +39,7 @@ namespace SqlIntegration.Library
         /// </summary>
         public async Task ClearVersionAsync(SqlConnection connection)
         {
-            await connection.ExecuteAsync($"DELETE [{schema}].[{tableName}] WHERE [ViewName]=@viewName", new { viewName = SourceView });
+            await connection.ExecuteAsync($"DELETE [{schema}].[{tableName}] WHERE [ObjectName]=@viewName", new { viewName = SourceView });
         }
 
         public async Task ExecuteAsync(SqlConnection connection)
@@ -82,9 +82,9 @@ namespace SqlIntegration.Library
         {
             if (sourceView.Equals(intoTable)) throw new InvalidOperationException("Source view and table cannot be the same.");
 
-            if (!(await connection.ViewExistsAsync(sourceView))) throw new ArgumentException($"View not found: {sourceView}");
+            if (!await connection.ViewExistsAsync(sourceView)) throw new ArgumentException($"View not found: {sourceView}");
 
-            if (!(await connection.SchemaExistsAsync(intoTable.Schema)))
+            if (!await connection.SchemaExistsAsync(intoTable.Schema))
             {
                 await connection.ExecuteAsync($"CREATE SCHEMA [{intoTable.Schema}]");
             }
@@ -105,10 +105,10 @@ namespace SqlIntegration.Library
             {
                 await connection.ExecuteAsync(
                     $@"CREATE TABLE [{schema}].[{tableName}] (
-                        [ViewName] nvarchar(255) NOT NULL,
+                        [ObjectName] nvarchar(255) NOT NULL,
                         [LatestVersion] bigint NOT NULL,
                         [Id] int identity(1,1),
-                        CONSTRAINT [PK_{schema}_{tableName}] PRIMARY KEY ([ViewName]),
+                        CONSTRAINT [PK_{schema}_{tableName}] PRIMARY KEY ([ObjectName]),
                         CONSTRAINT [U_{schema}_{tableName}] UNIQUE ([Id])
                     )");
             }

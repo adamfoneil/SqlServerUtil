@@ -1,19 +1,17 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using SqlIntegration.Library;
-using SqlServer.LocalDb;
-using SqlIntegration.Library.Extensions;
-using SqlServer.LocalDb.Models;
-using System.Collections.Generic;
-using System;
-using AdamOneilSoftware;
-using Testing.Models;
+﻿using AdamOneilSoftware;
 using Dapper;
-using System.Linq;
-using SqlIntegration.Library.Classes;
-using System.Data.SqlClient;
-using Dapper.CX.Classes;
-using Dapper.CX.Extensions;
 using DataTables.Library;
+using Microsoft.Data.SqlClient;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using SqlIntegration.Library;
+using SqlIntegration.Library.Classes;
+using SqlIntegration.Library.Extensions;
+using SqlServer.LocalDb;
+using SqlServer.LocalDb.Models;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using Testing.Models;
 
 namespace Testing
 {

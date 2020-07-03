@@ -5,7 +5,7 @@ using SqlIntegration.Library.Internal;
 using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Data.SqlClient;
+using Microsoft.Data.SqlClient;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -120,13 +120,13 @@ namespace SqlIntegration.Library
             await ExecuteInnerAsync(destConnection, DbObject.Parse(destObject), batchSize, options, sourceData, 0);
         }
 
-        public static async Task<StringBuilder> GetSqlInsertStatements(string intoTable, DataTable dataTable, BulkInsertOptions options = null)
+        public static async Task<StringBuilder> GetSqlStatementsAsync(string intoTable, DataTable dataTable, BulkInsertOptions options = null)
         {
             var obj = DbObject.Parse(intoTable);
-            return await GetSqlInsertStatements(obj, dataTable, options);
+            return await GetSqlStatementsAsync(obj, dataTable, options);
         }
 
-        public static async Task<StringBuilder> GetSqlInsertStatements(DbObject intoTable, DataTable dataTable, BulkInsertOptions options = null)
+        public static async Task<StringBuilder> GetSqlStatementsAsync(DbObject intoTable, DataTable dataTable, BulkInsertOptions options = null)
         {
             StringBuilder result = new StringBuilder();
 
@@ -134,16 +134,16 @@ namespace SqlIntegration.Library
 
             if (identityInsert)
             {
-                result.AppendLine($"SET IDENTITY_INSERT [{intoTable.Schema}].[{intoTable.Name}] ON");
+                result.AppendLine($"SET IDENTITY_INSERT [{intoTable.Schema}].[{intoTable.Name}] ON\r\n");
             }
 
             var mvi = await GetMultiValueInsertAsync(intoTable, dataTable, 0, dataTable.Rows.Count, options: options);
             result.AppendLine(mvi.InsertStatement);
-            result.Append("\r\n" + string.Join("\r\n,", mvi.Values));
+            result.Append(string.Join(",", mvi.Values));
 
             if (identityInsert)
             {
-                result.AppendLine($"SET IDENTITY_INSERT [{intoTable.Schema}].[{intoTable.Name}] OFF");
+                result.AppendLine($"\r\nSET IDENTITY_INSERT [{intoTable.Schema}].[{intoTable.Name}] OFF");
             }
 
             return result;

@@ -8,7 +8,7 @@ using SqlServer.LocalDb;
 using SqlServer.LocalDb.Models;
 using System;
 using System.Collections.Generic;
-using System.Data.SqlClient;
+using Microsoft.Data.SqlClient;
 using Testing.Classes;
 using Testing.Models;
 
@@ -23,7 +23,7 @@ namespace Testing
             using (var cn = LocalDb.GetConnection("ViewMaterializer", CreateObjects()))
             {
                 DisableChangeTracking(cn);
-                CreateRandomSalesData(cn);
+                CreateRandomSalesData(cn, 10000);
                 EnableChangeTracking(cn);
 
                 // make sure we're starting with an empty reporting table
@@ -75,7 +75,7 @@ namespace Testing
             }
         }
 
-        private IEnumerable<InitializeStatement> CreateObjects()
+        public static IEnumerable<InitializeStatement> CreateObjects()
         {
             yield return new InitializeStatement(
                 "dbo.SalesHistory", 
@@ -108,7 +108,7 @@ namespace Testing
 	                UPPER(LEFT([ItemNumber], 2))");
         }
 
-        private void CreateRandomSalesData(SqlConnection cn)
+        public static void CreateRandomSalesData(SqlConnection cn, int rows)
         {
             string[] regions = new string[]
             {
@@ -116,7 +116,7 @@ namespace Testing
             };
 
             var tdg = new TestDataGenerator() { BatchSize = 500 };
-            tdg.Generate<SalesHistory>(10000, (row) =>
+            tdg.Generate<SalesHistory>(rows, (row) =>
             {
                 row.Customer = tdg.Random(Source.FirstName) + " " + tdg.Random(Source.LastName);                
                 row.Region = tdg.Random(regions);
