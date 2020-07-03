@@ -139,7 +139,7 @@ namespace SqlIntegration.Library
 
             var mvi = await GetMultiValueInsertAsync(intoTable, dataTable, 0, dataTable.Rows.Count, options: options);
             result.AppendLine(mvi.InsertStatement);
-            foreach (var value in mvi.Values) result.AppendLine(value);
+            result.Append("\r\n" + string.Join("\r\n,", mvi.Values));
 
             if (identityInsert)
             {
