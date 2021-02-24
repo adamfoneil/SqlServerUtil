@@ -95,11 +95,31 @@ namespace SqlIntegration.Library
             string fromSchema, string fromTable, string identityColumn,
             string criteria = null, object parameters = null,
             Dictionary<string, string> mapForeignKeys = null,
-            Action<SqlServerCmd, DataRow> onEachRow = null)
+            Action<SqlServerCmd, DataRow> onEachRow = null,
+            Action<IDbTransaction> onSuccess = null, 
+            Action<Exception, IDbTransaction> onException = null)
         {
             DataTable dataTable = await GetSourceDataAsync(connection, fromSchema, fromTable, criteria, parameters);
 
-            await CopyRowsAsync(connection, dataTable, identityColumn, fromSchema, fromTable, mapForeignKeys, onEachRow);
+            if (onSuccess != null && onException != null)
+            { 
+                using (var txn = connection.BeginTransaction())
+                {
+                    try
+                    {
+                        await CopyRowsAsync(connection, dataTable, identityColumn, fromSchema, fromTable, mapForeignKeys, onEachRow, txn);
+                        onSuccess.Invoke(txn);
+                    }
+                    catch (Exception exc)
+                    {
+                        onException.Invoke(exc, txn);
+                    }                    
+                }
+            }
+            else
+            {
+                await CopyRowsAsync(connection, dataTable, identityColumn, fromSchema, fromTable, mapForeignKeys, onEachRow);
+            }            
         }
 
         private static async Task<DataTable> GetSourceDataAsync(SqlConnection connection, string fromSchema, string fromTable, string criteria, object parameters)
@@ -115,46 +135,46 @@ namespace SqlIntegration.Library
             SqlConnection connection,
             DataTable fromDataTable, string identityColumn, string intoSchema, string intoTable,
             Dictionary<string, string> mapForeignKeys = null,
-            Action<SqlServerCmd, DataRow> onEachRow = null)
+            Action<SqlServerCmd, DataRow> onEachRow = null, IDbTransaction txn = null)
         {
-            var mappingCmd = await SqlServerCmd.FromTableSchemaAsync(connection, Schema, GetTableName());            
+            var mappingCmd = await SqlServerCmd.FromTableSchemaAsync(connection, Schema, GetTableName(), txn);
             mappingCmd["Schema"] = intoSchema;
             mappingCmd["TableName"] = intoTable;
             mappingCmd["Timestamp"] = DateTime.UtcNow;
 
-            var migrateCmd = await SqlServerCmd.FromTableSchemaAsync(connection, intoSchema, intoTable);
+            var migrateCmd = await SqlServerCmd.FromTableSchemaAsync(connection, intoSchema, intoTable, txn);
             
-            await ValidateForeignKeyMappingAsync(connection, mapForeignKeys);            
+            await ValidateForeignKeyMappingAsync(connection, mapForeignKeys, txn);
 
             foreach (DataRow dataRow in fromDataTable.Rows)
             {
                 TIdentity sourceId = dataRow.Field<TIdentity>(identityColumn);
                 
                 // if this row has already been copied, then skip
-                if (await IsRowMappedAsync(connection, new DbObject(intoSchema, intoTable), sourceId)) continue;
+                if (await IsRowMappedAsync(connection, new DbObject(intoSchema, intoTable), sourceId, txn)) continue;
                 
                 migrateCmd.BindDataRow(dataRow);
-                await MapForeignKeysAsync(connection, dataRow, mapForeignKeys, migrateCmd);
+                await MapForeignKeysAsync(connection, dataRow, mapForeignKeys, migrateCmd, txn);
                 onEachRow?.Invoke(migrateCmd, dataRow);
 
                 try
                 {
                     // copy the source row to the destination connection
                     var sql = migrateCmd.GetInsertStatement();
-                    TIdentity newId = await migrateCmd.InsertAsync<TIdentity>(connection);
+                    TIdentity newId = await migrateCmd.InsertAsync<TIdentity>(connection, txn);
 
                     try
                     {
                         mappingCmd["SourceId"] = sourceId;
                         mappingCmd["NewId"] = newId;                        
-                        await mappingCmd.InsertAsync<TIdentity>(connection);
+                        await mappingCmd.InsertAsync<TIdentity>(connection, txn);
                     }
                     catch (Exception exc)
                     {                        
                         throw new Exception($"Error mapping source Id {sourceId} to new Id {newId}: {exc.Message}");                                                                        
                     }
                 }
-                catch (Exception exc)
+                catch
                 {
                     // insert errors should be logged with the job
                     throw;
@@ -162,14 +182,14 @@ namespace SqlIntegration.Library
             }
         }        
 
-        private async Task ValidateForeignKeyMappingAsync(SqlConnection connection, Dictionary<string, string> mapForeignKeys)
+        private async Task ValidateForeignKeyMappingAsync(SqlConnection connection, Dictionary<string, string> mapForeignKeys, IDbTransaction txn = null)
         {
             if (mapForeignKeys == null) return;
 
             var validSources = await connection.QueryAsync<string>(
                 $@"SELECT [Schema] + '.' + [TableName] AS [Table]
                 FROM [{Schema}].[{GetTableName()}]
-                GROUP BY [Schema], [TableName]");
+                GROUP BY [Schema], [TableName]", transaction: txn);
 
             var invalid = mapForeignKeys.Values.Except(validSources);
             if (invalid.Any())
@@ -179,21 +199,21 @@ namespace SqlIntegration.Library
             }
         }        
 
-        private async Task<TIdentity> GetNewIdAsync(SqlConnection cn, DbObject dbObject, TIdentity sourceId)
+        private async Task<TIdentity> GetNewIdAsync(SqlConnection cn, DbObject dbObject, TIdentity sourceId, IDbTransaction txn = null)
         {
             try
             {
                 return await cn.QuerySingleAsync<TIdentity>(
                     $@"SELECT [NewId] FROM [{Schema}].[{GetTableName()}] WHERE [Schema]=@schema AND [TableName]=@tableName AND [SourceId]=@sourceId",
-                    new { schema = dbObject.Schema, tableName = dbObject.Name, sourceId });
+                    new { schema = dbObject.Schema, tableName = dbObject.Name, sourceId }, txn);
             }
             catch (Exception exc)
             {
-                throw new Exception($"Error getting new Id for {dbObject.ToString()} from source Id {sourceId}: {exc.Message}");
+                throw new Exception($"Error getting new Id for {dbObject} from source Id {sourceId}: {exc.Message}");
             }
         }
 
-        private async Task MapForeignKeysAsync(SqlConnection connection, DataRow dataRow, Dictionary<string, string> mapForeignKeys, SqlServerCmd cmd)
+        private async Task MapForeignKeysAsync(SqlConnection connection, DataRow dataRow, Dictionary<string, string> mapForeignKeys, SqlServerCmd cmd, IDbTransaction txn = null)
         {
             if (mapForeignKeys == null) return;
             
@@ -202,16 +222,16 @@ namespace SqlIntegration.Library
                 if (!dataRow.IsNull(kp.Key))
                 {
                     TIdentity sourceId = dataRow.Field<TIdentity>(kp.Key);
-                    cmd[kp.Key] = await GetNewIdAsync(connection, DbObject.Parse(kp.Value), sourceId);
+                    cmd[kp.Key] = await GetNewIdAsync(connection, DbObject.Parse(kp.Value), sourceId, txn);
                 }                
             }
         }
 
-        private async Task<bool> IsRowMappedAsync(SqlConnection connection, DbObject dbObject, TIdentity idValue)
+        private async Task<bool> IsRowMappedAsync(SqlConnection connection, DbObject dbObject, TIdentity idValue, IDbTransaction txn = null)
         {
             try
             {
-                var newId = await GetNewIdAsync(connection, dbObject, idValue);
+                var newId = await GetNewIdAsync(connection, dbObject, idValue, txn);
                 return true;
             }
             catch 
@@ -223,11 +243,31 @@ namespace SqlIntegration.Library
         public async Task CopyAcrossAsync(
             SqlConnection fromConnection, string fromSchema, string fromTable, string identityColumn, SqlConnection toConnection, string criteria = null, object parameters = null,
             Dictionary<string, string> mapForeignKeys = null,
-            Action<SqlServerCmd, DataRow> onEachRow = null)
+            Action<SqlServerCmd, DataRow> onEachRow = null,
+            Action<IDbTransaction> onSuccess = null,
+            Action<Exception, IDbTransaction> onException = null)
         {
             var dataTable = await GetSourceDataAsync(fromConnection, fromSchema, fromTable, criteria, parameters);
 
-            await CopyRowsAsync(toConnection, dataTable, identityColumn, fromSchema, fromTable, mapForeignKeys, onEachRow);
+            if (onSuccess != null && onException != null)
+            {
+                using (var txn = toConnection.BeginTransaction())
+                {
+                    try
+                    {
+                        await CopyRowsAsync(toConnection, dataTable, identityColumn, fromSchema, fromTable, mapForeignKeys, onEachRow, txn);                        
+                        onSuccess.Invoke(txn);
+                    }
+                    catch (Exception exc)
+                    {
+                        onException.Invoke(exc, txn);
+                    }
+                }
+            }
+            else
+            {
+                await CopyRowsAsync(toConnection, dataTable, identityColumn, fromSchema, fromTable, mapForeignKeys, onEachRow);
+            }            
         }
     }
 }

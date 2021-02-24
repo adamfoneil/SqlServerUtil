@@ -10,7 +10,9 @@ using SqlServer.LocalDb;
 using SqlServer.LocalDb.Models;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
+using System.Threading.Tasks;
 using Testing.Models;
 
 namespace Testing
@@ -55,38 +57,45 @@ namespace Testing
                 // just an arbitrary Id to start with
                 var param = new { id = 3 };
 
-                // copy one parent with a new name that appends the word " - copy"
-                migrator.CopySelfAsync(cn, "dbo", "Parent", "Id", 
-                    "[Id]=@id", param, 
-                    onEachRow: (cmd, row) =>
-                    {
-                        cmd["Name"] = row["Name"].ToString() + " - copy";
-                    }).Wait();
-
-                // copy the child rows
-                migrator.CopySelfAsync(cn, "dbo", "Child", "Id", 
-                    "[ParentId]=@id", param, 
-                    mapForeignKeys: new Dictionary<string, string>()
-                    {
-                        { "ParentId", "dbo.Parent" }
-                    }).Wait();
-
-                // copy grand child rows
-                migrator.CopySelfAsync(cn, "dbo", "GrandChild", "Id", 
-                    "[ParentId] IN (SELECT [Id] FROM [dbo].[Child] WHERE [ParentId]=@id)", param,
-                    mapForeignKeys: new Dictionary<string, string>()
-                    {
-                        { "ParentId", "dbo.Child" }
-                    }).Wait();
-
+                MigrateInner(migrator, cn, param);
+                
                 int mappedParentId = cn.QuerySingle<int>(
                     "SELECT [NewId] FROM [migrate].[KeyMap_int] WHERE [Schema]='dbo' AND [TableName]='Parent' AND [SourceId]=@sourceId",
                     new { sourceId = param.id });
 
                 Assert.IsTrue(ChildrenAreSame(cn, param.id, mappedParentId));
                 Assert.IsTrue(GrandChildrenAreSame(cn, param.id, mappedParentId));
-                //Assert.IsTrue(NoCrossedLineage(cn, param.id));
+                //Assert.IsTrue(NoCrossedLineage(cn, param.id));            
             }
+        }
+
+        private void MigrateInner(SqlMigrator<int> migrator, SqlConnection cn, object param, 
+            Action<IDbTransaction> onSuccess = null, 
+            Action<Exception, IDbTransaction> onException = null)
+        {
+            // copy one parent with a new name that appends the word " - copy"
+            migrator.CopySelfAsync(cn, "dbo", "Parent", "Id",
+                "[Id]=@id", param,
+                onEachRow: (cmd, row) =>
+                {
+                    cmd["Name"] = row["Name"].ToString() + " - copy";
+                }, onSuccess: onSuccess, onException: onException).Wait();
+
+            // copy the child rows
+            migrator.CopySelfAsync(cn, "dbo", "Child", "Id",
+                "[ParentId]=@id", param,
+                mapForeignKeys: new Dictionary<string, string>()
+                {
+                        { "ParentId", "dbo.Parent" }
+                }, onSuccess: onSuccess, onException: onException).Wait();
+
+            // copy grand child rows
+            migrator.CopySelfAsync(cn, "dbo", "GrandChild", "Id",
+                "[ParentId] IN (SELECT [Id] FROM [dbo].[Child] WHERE [ParentId]=@id)", param,
+                mapForeignKeys: new Dictionary<string, string>()
+                {
+                        { "ParentId", "dbo.Child" }
+                }, onSuccess: onSuccess, onException: onException).Wait();
         }
 
         private bool GrandChildrenAreSame(SqlConnection cn, int sourceParentId, int newParentId)
