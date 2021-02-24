@@ -154,12 +154,12 @@ namespace SqlIntegration.Library
             int row = 0;
             foreach (DataRow dataRow in fromDataTable.Rows)
             {
-                if (maxRows > 0 && row > maxRows) break;
-
                 TIdentity sourceId = dataRow.Field<TIdentity>(identityColumn);
                 
                 // if this row has already been copied, then skip
                 if (await IsRowMappedAsync(connection, new DbObject(intoSchema, intoTable), sourceId, txn)) continue;
+
+                if (maxRows > 0 && row > maxRows) break;
 
                 MigrateCommand.BindDataRow(dataRow);
                 await MapForeignKeysAsync(connection, dataRow, mapForeignKeys, MigrateCommand, txn);

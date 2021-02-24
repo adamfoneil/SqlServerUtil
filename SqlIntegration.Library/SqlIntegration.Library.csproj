@@ -6,7 +6,7 @@
     <Company>Adam O'Neil</Company>
     <Product>SqlServer.Util.Library</Product>
     <Description>A grab bag of SQL Server utilities: BulkInsert, SqlMigrator, and ViewMaterializer</Description>
-    <Version>1.0.5</Version>
+    <Version>1.0.6</Version>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <RepositoryUrl>https://github.com/adamfoneil/SqlServerUtil</RepositoryUrl>
     <PackageProjectUrl>https://github.com/adamfoneil/SqlServerUtil</PackageProjectUrl>
