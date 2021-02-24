@@ -6,13 +6,12 @@
     <Company>Adam O'Neil</Company>
     <Product>SqlServer.Util.Library</Product>
     <Description>A grab bag of SQL Server utilities: BulkInsert, SqlMigrator, and ViewMaterializer</Description>
-    <Version>1.0.4</Version>
+    <Version>1.0.5</Version>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <RepositoryUrl>https://github.com/adamfoneil/SqlServerUtil</RepositoryUrl>
     <PackageProjectUrl>https://github.com/adamfoneil/SqlServerUtil</PackageProjectUrl>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <PackageReleaseNotes>transaction support
-https://github.com/adamfoneil/SqlServerUtil/issues/10</PackageReleaseNotes>
+    <PackageReleaseNotes>added public MigrateCommand and MappingCommand properties for improved diagnostics</PackageReleaseNotes>
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
     <PackageId>SqlServer.Util.Library</PackageId>
     <Copyright>Copyright (c) Adam O'Neil 2020</Copyright>

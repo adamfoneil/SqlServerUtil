@@ -90,6 +90,10 @@ namespace SqlIntegration.Library
             }
         }
 
+        public SqlServerCmd MigrateCommand { get; private set; }
+
+        public SqlServerCmd MappingCommand { get; private set; }
+
         public async Task CopySelfAsync(
             SqlConnection connection,
             string fromSchema, string fromTable, string identityColumn,
@@ -138,12 +142,12 @@ namespace SqlIntegration.Library
             Dictionary<string, string> mapForeignKeys = null,
             Action<SqlServerCmd, DataRow> onEachRow = null, IDbTransaction txn = null, int maxRows = 0)
         {
-            var mappingCmd = await SqlServerCmd.FromTableSchemaAsync(connection, Schema, GetTableName(), txn);
-            mappingCmd["Schema"] = intoSchema;
-            mappingCmd["TableName"] = intoTable;
-            mappingCmd["Timestamp"] = DateTime.UtcNow;
+            MappingCommand = await SqlServerCmd.FromTableSchemaAsync(connection, Schema, GetTableName(), txn);
+            MappingCommand["Schema"] = intoSchema;
+            MappingCommand["TableName"] = intoTable;
+            MappingCommand["Timestamp"] = DateTime.UtcNow;
 
-            var migrateCmd = await SqlServerCmd.FromTableSchemaAsync(connection, intoSchema, intoTable, txn);
+            MigrateCommand = await SqlServerCmd.FromTableSchemaAsync(connection, intoSchema, intoTable, txn);
             
             await ValidateForeignKeyMappingAsync(connection, mapForeignKeys, txn);
 
@@ -156,22 +160,22 @@ namespace SqlIntegration.Library
                 
                 // if this row has already been copied, then skip
                 if (await IsRowMappedAsync(connection, new DbObject(intoSchema, intoTable), sourceId, txn)) continue;
-                
-                migrateCmd.BindDataRow(dataRow);
-                await MapForeignKeysAsync(connection, dataRow, mapForeignKeys, migrateCmd, txn);
-                onEachRow?.Invoke(migrateCmd, dataRow);
+
+                MigrateCommand.BindDataRow(dataRow);
+                await MapForeignKeysAsync(connection, dataRow, mapForeignKeys, MigrateCommand, txn);
+                onEachRow?.Invoke(MigrateCommand, dataRow);
 
                 try
                 {
                     // copy the source row to the destination connection
-                    var sql = migrateCmd.GetInsertStatement();
-                    TIdentity newId = await migrateCmd.InsertAsync<TIdentity>(connection, txn);
+                    var sql = MigrateCommand.GetInsertStatement();
+                    TIdentity newId = await MigrateCommand.InsertAsync<TIdentity>(connection, txn);
 
                     try
                     {
-                        mappingCmd["SourceId"] = sourceId;
-                        mappingCmd["NewId"] = newId;                        
-                        await mappingCmd.InsertAsync<TIdentity>(connection, txn);
+                        MappingCommand["SourceId"] = sourceId;
+                        MappingCommand["NewId"] = newId;                        
+                        await MappingCommand.InsertAsync<TIdentity>(connection, txn);
                     }
                     catch (Exception exc)
                     {                        
