@@ -66,10 +66,7 @@ namespace SqlIntegration.Library
 
         public DbObject KeyMapTable { get { return new DbObject(Schema, GetTableName()); } }
 
-        private static string GetTableName()
-        {
-            return GetTableName(out _);
-        }
+        private static string GetTableName() => GetTableName(out _);
 
         private static string GetTableName(out KeyMapTableInfo info)
         {
@@ -125,7 +122,7 @@ namespace SqlIntegration.Library
             mappingCmd["TableName"] = intoTable;
             mappingCmd["Timestamp"] = DateTime.UtcNow;
 
-            var cmd = await SqlServerCmd.FromTableSchemaAsync(connection, intoSchema, intoTable);
+            var migrateCmd = await SqlServerCmd.FromTableSchemaAsync(connection, intoSchema, intoTable);
             
             await ValidateForeignKeyMappingAsync(connection, mapForeignKeys);            
 
@@ -136,15 +133,15 @@ namespace SqlIntegration.Library
                 // if this row has already been copied, then skip
                 if (await IsRowMappedAsync(connection, new DbObject(intoSchema, intoTable), sourceId)) continue;
                 
-                cmd.BindDataRow(dataRow);
-                await MapForeignKeysAsync(connection, dataRow, mapForeignKeys, cmd);
-                onEachRow?.Invoke(cmd, dataRow);
+                migrateCmd.BindDataRow(dataRow);
+                await MapForeignKeysAsync(connection, dataRow, mapForeignKeys, migrateCmd);
+                onEachRow?.Invoke(migrateCmd, dataRow);
 
                 try
                 {
                     // copy the source row to the destination connection
-                    var sql = cmd.GetInsertStatement();
-                    TIdentity newId = await cmd.InsertAsync<TIdentity>(connection);
+                    var sql = migrateCmd.GetInsertStatement();
+                    TIdentity newId = await migrateCmd.InsertAsync<TIdentity>(connection);
 
                     try
                     {
