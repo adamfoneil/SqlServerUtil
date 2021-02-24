@@ -113,6 +113,7 @@ namespace SqlIntegration.Library
                     catch (Exception exc)
                     {
                         onException.Invoke(exc, txn);
+                        throw;
                     }                    
                 }
             }
@@ -261,6 +262,7 @@ namespace SqlIntegration.Library
                     catch (Exception exc)
                     {
                         onException.Invoke(exc, txn);
+                        throw;
                     }
                 }
             }

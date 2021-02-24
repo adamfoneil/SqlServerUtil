@@ -69,7 +69,39 @@ namespace Testing
             }
         }
 
-        private void MigrateInner(SqlMigrator<int> migrator, SqlConnection cn, object param, 
+        [TestMethod]
+        public void CopyRowsSelfWithTransaction()
+        {
+            using (var cn = LocalDb.GetConnection(dbName, SampleModel()))
+            {
+                CreateRandomData(cn);
+
+                var migrator = SqlMigrator<int>.InitializeAsync(cn).Result;
+
+                migrator.DeleteMappingsAsync(cn, new DbObject[]
+                {
+                    DbObject.Parse("dbo.Parent"),
+                    DbObject.Parse("dbo.Child"),
+                    DbObject.Parse("dbo.GrandChild")
+                }).Wait();
+
+                // just an arbitrary Id to start with
+                var param = new { id = 3 };
+
+                MigrateInner(migrator, cn, param, (txn) => txn.Commit(), (exc, txn) => txn.Rollback());
+
+                int mappedParentId = cn.QuerySingle<int>(
+                    "SELECT [NewId] FROM [migrate].[KeyMap_int] WHERE [Schema]='dbo' AND [TableName]='Parent' AND [SourceId]=@sourceId",
+                    new { sourceId = param.id });
+
+                Assert.IsTrue(ChildrenAreSame(cn, param.id, mappedParentId));
+                Assert.IsTrue(GrandChildrenAreSame(cn, param.id, mappedParentId));
+                //Assert.IsTrue(NoCrossedLineage(cn, param.id));            
+            }
+        }
+
+        private void MigrateInner(
+            SqlMigrator<int> migrator, SqlConnection cn, object param, 
             Action<IDbTransaction> onSuccess = null, 
             Action<Exception, IDbTransaction> onException = null)
         {
