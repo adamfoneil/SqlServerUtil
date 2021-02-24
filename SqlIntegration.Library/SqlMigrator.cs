@@ -97,7 +97,7 @@ namespace SqlIntegration.Library
             Dictionary<string, string> mapForeignKeys = null,
             Action<SqlServerCmd, DataRow> onEachRow = null,
             Action<IDbTransaction> onSuccess = null, 
-            Action<Exception, IDbTransaction> onException = null)
+            Action<Exception, IDbTransaction> onException = null, int maxRows = 0)
         {
             DataTable dataTable = await GetSourceDataAsync(connection, fromSchema, fromTable, criteria, parameters);
 
@@ -107,7 +107,7 @@ namespace SqlIntegration.Library
                 {
                     try
                     {
-                        await CopyRowsAsync(connection, dataTable, identityColumn, fromSchema, fromTable, mapForeignKeys, onEachRow, txn);
+                        await CopyRowsAsync(connection, dataTable, identityColumn, fromSchema, fromTable, mapForeignKeys, onEachRow, txn, maxRows);
                         onSuccess.Invoke(txn);
                     }
                     catch (Exception exc)
@@ -119,7 +119,7 @@ namespace SqlIntegration.Library
             }
             else
             {
-                await CopyRowsAsync(connection, dataTable, identityColumn, fromSchema, fromTable, mapForeignKeys, onEachRow);
+                await CopyRowsAsync(connection, dataTable, identityColumn, fromSchema, fromTable, mapForeignKeys, onEachRow, maxRows: maxRows);
             }            
         }
 
@@ -136,7 +136,7 @@ namespace SqlIntegration.Library
             SqlConnection connection,
             DataTable fromDataTable, string identityColumn, string intoSchema, string intoTable,
             Dictionary<string, string> mapForeignKeys = null,
-            Action<SqlServerCmd, DataRow> onEachRow = null, IDbTransaction txn = null)
+            Action<SqlServerCmd, DataRow> onEachRow = null, IDbTransaction txn = null, int maxRows = 0)
         {
             var mappingCmd = await SqlServerCmd.FromTableSchemaAsync(connection, Schema, GetTableName(), txn);
             mappingCmd["Schema"] = intoSchema;
@@ -147,8 +147,11 @@ namespace SqlIntegration.Library
             
             await ValidateForeignKeyMappingAsync(connection, mapForeignKeys, txn);
 
+            int row = 0;
             foreach (DataRow dataRow in fromDataTable.Rows)
             {
+                if (maxRows > 0 && row > maxRows) break;
+
                 TIdentity sourceId = dataRow.Field<TIdentity>(identityColumn);
                 
                 // if this row has already been copied, then skip
@@ -180,6 +183,8 @@ namespace SqlIntegration.Library
                     // insert errors should be logged with the job
                     throw;
                 }
+
+                row++;
             }
         }        
 
@@ -246,7 +251,7 @@ namespace SqlIntegration.Library
             Dictionary<string, string> mapForeignKeys = null,
             Action<SqlServerCmd, DataRow> onEachRow = null,
             Action<IDbTransaction> onSuccess = null,
-            Action<Exception, IDbTransaction> onException = null)
+            Action<Exception, IDbTransaction> onException = null, int maxRows = 0)
         {
             var dataTable = await GetSourceDataAsync(fromConnection, fromSchema, fromTable, criteria, parameters);
 
@@ -256,7 +261,7 @@ namespace SqlIntegration.Library
                 {
                     try
                     {
-                        await CopyRowsAsync(toConnection, dataTable, identityColumn, fromSchema, fromTable, mapForeignKeys, onEachRow, txn);                        
+                        await CopyRowsAsync(toConnection, dataTable, identityColumn, fromSchema, fromTable, mapForeignKeys, onEachRow, txn, maxRows);
                         onSuccess.Invoke(txn);
                     }
                     catch (Exception exc)
@@ -268,7 +273,7 @@ namespace SqlIntegration.Library
             }
             else
             {
-                await CopyRowsAsync(toConnection, dataTable, identityColumn, fromSchema, fromTable, mapForeignKeys, onEachRow);
+                await CopyRowsAsync(toConnection, dataTable, identityColumn, fromSchema, fromTable, mapForeignKeys, onEachRow, maxRows: maxRows);
             }            
         }
     }
