@@ -94,7 +94,7 @@ namespace SqlIntegration.Library
 
         public SqlServerCmd MappingCommand { get; private set; }
 
-        public async Task CopySelfAsync(
+        public async Task<int> CopySelfAsync(
             SqlConnection connection,
             string fromSchema, string fromTable, string identityColumn,
             string criteria = null, object parameters = null,
@@ -104,6 +104,7 @@ namespace SqlIntegration.Library
             Action<Exception, IDbTransaction> onException = null, int maxRows = 0)
         {
             DataTable dataTable = await GetSourceDataAsync(connection, fromSchema, fromTable, criteria, parameters);
+            int result = 0;
 
             if (onSuccess != null && onException != null)
             { 
@@ -111,7 +112,7 @@ namespace SqlIntegration.Library
                 {
                     try
                     {
-                        await CopyRowsAsync(connection, dataTable, identityColumn, fromSchema, fromTable, mapForeignKeys, onEachRow, txn, maxRows);
+                        result = await CopyRowsAsync(connection, dataTable, identityColumn, fromSchema, fromTable, mapForeignKeys, onEachRow, txn, maxRows);
                         onSuccess.Invoke(txn);
                     }
                     catch (Exception exc)
@@ -123,8 +124,10 @@ namespace SqlIntegration.Library
             }
             else
             {
-                await CopyRowsAsync(connection, dataTable, identityColumn, fromSchema, fromTable, mapForeignKeys, onEachRow, maxRows: maxRows);
-            }            
+                result = await CopyRowsAsync(connection, dataTable, identityColumn, fromSchema, fromTable, mapForeignKeys, onEachRow, maxRows: maxRows);
+            }
+
+            return result;
         }
 
         private static async Task<DataTable> GetSourceDataAsync(SqlConnection connection, string fromSchema, string fromTable, string criteria, object parameters)
@@ -136,7 +139,7 @@ namespace SqlIntegration.Library
             return dataTable;
         }
 
-        public async Task CopyRowsAsync(
+        public async Task<int> CopyRowsAsync(
             SqlConnection connection,
             DataTable fromDataTable, string identityColumn, string intoSchema, string intoTable,
             Dictionary<string, string> mapForeignKeys = null,
@@ -190,6 +193,8 @@ namespace SqlIntegration.Library
 
                 row++;
             }
+
+            return row;
         }        
 
         private async Task ValidateForeignKeyMappingAsync(SqlConnection connection, Dictionary<string, string> mapForeignKeys, IDbTransaction txn = null)
@@ -250,7 +255,7 @@ namespace SqlIntegration.Library
             }
         }
 
-        public async Task CopyAcrossAsync(
+        public async Task<int> CopyAcrossAsync(
             SqlConnection fromConnection, string fromSchema, string fromTable, string identityColumn, SqlConnection toConnection, string criteria = null, object parameters = null,
             Dictionary<string, string> mapForeignKeys = null,
             Action<SqlServerCmd, DataRow> onEachRow = null,
@@ -259,13 +264,15 @@ namespace SqlIntegration.Library
         {
             var dataTable = await GetSourceDataAsync(fromConnection, fromSchema, fromTable, criteria, parameters);
 
+            int result = 0;
+
             if (onSuccess != null && onException != null)
             {
                 using (var txn = toConnection.BeginTransaction())
                 {
                     try
                     {
-                        await CopyRowsAsync(toConnection, dataTable, identityColumn, fromSchema, fromTable, mapForeignKeys, onEachRow, txn, maxRows);
+                        result = await CopyRowsAsync(toConnection, dataTable, identityColumn, fromSchema, fromTable, mapForeignKeys, onEachRow, txn, maxRows);
                         onSuccess.Invoke(txn);
                     }
                     catch (Exception exc)
@@ -277,8 +284,10 @@ namespace SqlIntegration.Library
             }
             else
             {
-                await CopyRowsAsync(toConnection, dataTable, identityColumn, fromSchema, fromTable, mapForeignKeys, onEachRow, maxRows: maxRows);
-            }            
+                result = await CopyRowsAsync(toConnection, dataTable, identityColumn, fromSchema, fromTable, mapForeignKeys, onEachRow, maxRows: maxRows);
+            }
+
+            return result;
         }
     }
 }
