@@ -170,8 +170,7 @@ namespace SqlIntegration.Library
 
                 try
                 {
-                    // copy the source row to the destination connection
-                    var sql = MigrateCommand.GetInsertStatement();
+                    // copy the source row to the destination connection                    
                     TIdentity newId = await MigrateCommand.InsertAsync<TIdentity>(connection, txn);
 
                     try
