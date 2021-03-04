@@ -1,12 +1,13 @@
 ﻿using Dapper;
 using Dapper.CX.SqlServer;
 using DataTables.Library;
+using Microsoft.Data.SqlClient;
+using SqlIntegration.Library.Exceptions;
 using SqlIntegration.Library.Extensions;
 using SqlIntegration.Library.Models;
 using System;
 using System.Collections.Generic;
 using System.Data;
-using Microsoft.Data.SqlClient;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -23,6 +24,8 @@ namespace SqlIntegration.Library
         }
 
         public Func<SqlConnection, string, TIdentity, DataRow, Task> OnMappingException { get; set; }
+
+        public Func<SqlConnection, DataRow, Exception, Task<bool>> OnInsertException { get; set; }
 
         private static Dictionary<Type, KeyMapTableInfo> SupportedIdentityTypes
         {
@@ -156,7 +159,7 @@ namespace SqlIntegration.Library
             
             await ValidateForeignKeyMappingAsync(connection, mapForeignKeys, txn);
 
-            int row = 0;
+            int rowCount = 0;
             foreach (DataRow dataRow in fromDataTable.Rows)
             {
                 TIdentity sourceId = dataRow.Field<TIdentity>(identityColumn);
@@ -164,7 +167,7 @@ namespace SqlIntegration.Library
                 // if this row has already been copied, then skip
                 if (await IsRowMappedAsync(connection, new DbObject(intoSchema, intoTable), sourceId, txn)) continue;
 
-                if (maxRows > 0 && row > maxRows) break;
+                if (maxRows > 0 && rowCount > maxRows) break;
 
                 MigrateCommand.BindDataRow(dataRow);
 
@@ -181,32 +184,38 @@ namespace SqlIntegration.Library
 
                 onEachRow?.Invoke(MigrateCommand, dataRow);
 
+                TIdentity newId = default;
                 try
                 {
                     // copy the source row to the destination connection                    
-                    TIdentity newId = await MigrateCommand.InsertAsync<TIdentity>(connection, txn);
-
-                    try
-                    {
-                        MappingCommand["SourceId"] = sourceId;
-                        MappingCommand["NewId"] = newId;                        
-                        await MappingCommand.InsertAsync<TIdentity>(connection, txn);
-                    }
-                    catch (Exception exc)
-                    {                        
-                        throw new Exception($"Error mapping source Id {sourceId} to new Id {newId}: {exc.Message}");                                                                        
-                    }
+                    newId = await MigrateCommand.InsertAsync<TIdentity>(connection, txn);
                 }
-                catch
+                catch (Exception exc)
                 {
-                    // insert errors should be logged with the job
-                    throw;
+                    if (OnInsertException != null)
+                    {
+                        var shouldContinue = await OnInsertException.Invoke(connection, dataRow, exc);
+                        if (shouldContinue) continue;
+                    }
+
+                    throw new InsertException(dataRow, exc);
                 }
 
-                row++;
+                try
+                {
+                    MappingCommand["SourceId"] = sourceId;
+                    MappingCommand["NewId"] = newId;                        
+                    await MappingCommand.InsertAsync<TIdentity>(connection, txn);
+                }
+                catch (Exception exc)
+                {
+                    throw new MappingException<TIdentity>(sourceId, newId, exc);                        
+                }
+               
+                rowCount++;
             }
 
-            return row;
+            return rowCount;
         }        
 
         private async Task ValidateForeignKeyMappingAsync(SqlConnection connection, Dictionary<string, string> mapForeignKeys, IDbTransaction txn = null)
