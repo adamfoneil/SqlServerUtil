@@ -20,7 +20,9 @@ namespace SqlIntegration.Library
         private SqlMigrator() 
         {
             // can't create migrator directly, use InitializeAsync instead
-        }        
+        }
+
+        public Func<SqlConnection, string, TIdentity, DataRow, Task> OnMappingException { get; set; }
 
         private static Dictionary<Type, KeyMapTableInfo> SupportedIdentityTypes
         {
@@ -165,7 +167,18 @@ namespace SqlIntegration.Library
                 if (maxRows > 0 && row > maxRows) break;
 
                 MigrateCommand.BindDataRow(dataRow);
-                await MapForeignKeysAsync(connection, dataRow, mapForeignKeys, MigrateCommand, txn);
+
+                var mapping = await MapForeignKeysAsync(connection, dataRow, mapForeignKeys, MigrateCommand, txn);
+
+                if (!mapping.success)
+                {
+                    if (OnMappingException != null)
+                    {
+                        await OnMappingException.Invoke(connection, mapping.failedColumn, mapping.sourceId, dataRow);
+                    }                    
+                    continue;
+                }
+
                 onEachRow?.Invoke(MigrateCommand, dataRow);
 
                 try
@@ -227,17 +240,28 @@ namespace SqlIntegration.Library
             }
         }
 
-        private async Task MapForeignKeysAsync(SqlConnection connection, DataRow dataRow, Dictionary<string, string> mapForeignKeys, SqlServerCmd cmd, IDbTransaction txn = null)
+        private async Task<(bool success, string message, string failedColumn, TIdentity sourceId)> MapForeignKeysAsync(SqlConnection connection, DataRow dataRow, Dictionary<string, string> mapForeignKeys, SqlServerCmd cmd, IDbTransaction txn = null)
         {
-            if (mapForeignKeys == null) return;
-            
-            foreach (var kp in mapForeignKeys)
+            if (mapForeignKeys == null) return (true, null, null, default);
+
+            string columnName = null;
+            TIdentity sourceId = default;
+            try
             {
-                if (!dataRow.IsNull(kp.Key))
+                foreach (var kp in mapForeignKeys)
                 {
-                    TIdentity sourceId = dataRow.Field<TIdentity>(kp.Key);
-                    cmd[kp.Key] = await GetNewIdAsync(connection, DbObject.Parse(kp.Value), sourceId, txn);
-                }                
+                    columnName = kp.Key;
+                    if (!dataRow.IsNull(kp.Key))
+                    {
+                        sourceId = dataRow.Field<TIdentity>(columnName);
+                        cmd[columnName] = await GetNewIdAsync(connection, DbObject.Parse(kp.Value), sourceId, txn);
+                    }
+                }
+                return (true, null, null, default);
+            }
+            catch (Exception exc)
+            {
+                return (false, exc.Message, columnName, sourceId);
             }
         }
 

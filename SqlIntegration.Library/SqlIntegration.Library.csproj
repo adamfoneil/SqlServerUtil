@@ -6,12 +6,12 @@
     <Company>Adam O'Neil</Company>
     <Product>SqlServer.Util.Library</Product>
     <Description>A grab bag of SQL Server utilities: BulkInsert, SqlMigrator, and ViewMaterializer</Description>
-    <Version>1.0.7</Version>
+    <Version>1.0.8</Version>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <RepositoryUrl>https://github.com/adamfoneil/SqlServerUtil</RepositoryUrl>
     <PackageProjectUrl>https://github.com/adamfoneil/SqlServerUtil</PackageProjectUrl>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <PackageReleaseNotes>migration methods now return number of rows migrated</PackageReleaseNotes>
+    <PackageReleaseNotes>added OnMappingException delegate</PackageReleaseNotes>
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
     <PackageId>SqlServer.Util.Library</PackageId>
     <Copyright>Copyright (c) Adam O'Neil 2020</Copyright>
