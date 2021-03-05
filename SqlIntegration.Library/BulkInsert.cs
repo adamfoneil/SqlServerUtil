@@ -173,6 +173,11 @@ namespace SqlIntegration.Library
                     await ToggleIndexesAsync(destConnection, destObject, "DISABLE", options?.CommandTimeout ?? 30);
                 }
 
+                if (options?.IdentityInsert ?? false)
+                {
+                    await destConnection.ExecuteAsync($"SET IDENTITY_INSERT [{destObject.Schema}].[{destObject.Name}] ON\r\n");
+                }
+
                 int totalRows = data.Rows.Count;
                 MultiValueInsert mvi = new MultiValueInsert();
                 do
@@ -189,6 +194,11 @@ namespace SqlIntegration.Library
                 if (options?.DisableIndexes ?? false)
                 {
                     await ToggleIndexesAsync(destConnection, destObject, "REBUILD", options?.CommandTimeout ?? 30);
+                }
+
+                if (options?.IdentityInsert ?? false)
+                {
+                    await destConnection.ExecuteAsync($"SET IDENTITY_INSERT [{destObject.Schema}].[{destObject.Name}] OFF");
                 }
             }
         }
