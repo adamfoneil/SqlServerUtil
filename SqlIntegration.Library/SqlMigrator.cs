@@ -23,9 +23,11 @@ namespace SqlIntegration.Library
             // can't create migrator directly, use InitializeAsync instead
         }
 
-        public Func<SqlConnection, string, TIdentity, DataRow, Task> OnMappingException { get; set; }
+        public Func<SqlConnection, string, TIdentity, DataRow, Task> LogMappingException { get; set; }
 
         public Func<SqlConnection, DataRow, Exception, Task<bool>> OnInsertException { get; set; }
+
+        public Func<Exception, SqlConnection, DbObject, TIdentity, IDbTransaction, Task<TIdentity>> OnMappingException { get; set; }
 
         private static Dictionary<Type, KeyMapTableInfo> SupportedIdentityTypes
         {
@@ -97,7 +99,7 @@ namespace SqlIntegration.Library
 
         public SqlServerCmd MigrateCommand { get; private set; }
 
-        public SqlServerCmd MappingCommand { get; private set; }
+        public SqlServerCmd MappingCommand { get; private set; }        
 
         public async Task<int> CopySelfAsync(
             SqlConnection connection,
@@ -175,9 +177,9 @@ namespace SqlIntegration.Library
 
                 if (!mapping.success)
                 {
-                    if (OnMappingException != null)
+                    if (LogMappingException != null)
                     {
-                        await OnMappingException.Invoke(connection, mapping.failedColumn, mapping.sourceId, dataRow);
+                        await LogMappingException.Invoke(connection, mapping.failedColumn, mapping.sourceId, dataRow);
                     }                    
                     continue;
                 }
@@ -263,7 +265,28 @@ namespace SqlIntegration.Library
                     if (!dataRow.IsNull(kp.Key))
                     {
                         sourceId = dataRow.Field<TIdentity>(columnName);
-                        cmd[columnName] = await GetNewIdAsync(connection, DbObject.Parse(kp.Value), sourceId, txn);
+
+                        TIdentity mappedId = default;
+
+                        var dbObj = DbObject.Parse(kp.Value);
+                        try
+                        {
+                            mappedId = await GetNewIdAsync(connection, dbObj, sourceId, txn);
+                        }
+                        catch (Exception exc)
+                        {
+                            if (OnMappingException != null)
+                            {
+                                mappedId = await OnMappingException.Invoke(exc, connection, dbObj, sourceId, txn);
+                                if (mappedId.Equals(default)) throw;
+                            }
+                            else
+                            {
+                                throw;
+                            }                            
+                        }
+
+                        cmd[columnName] = mappedId;
                     }
                 }
                 return (true, null, null, default);
