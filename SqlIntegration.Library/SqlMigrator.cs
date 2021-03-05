@@ -237,7 +237,7 @@ namespace SqlIntegration.Library
             }
         }        
 
-        private async Task<TIdentity> GetNewIdAsync(SqlConnection cn, DbObject dbObject, TIdentity sourceId, IDbTransaction txn = null)
+        public async Task<TIdentity> GetNewIdAsync(SqlConnection cn, DbObject dbObject, TIdentity sourceId, IDbTransaction txn = null)
         {
             try
             {
