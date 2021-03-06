@@ -29,6 +29,8 @@ namespace SqlIntegration.Library
 
         public Func<Exception, SqlConnection, DbObject, TIdentity, IDbTransaction, Task<TIdentity>> OnMappingException { get; set; }
 
+        public Action<Progress> OnProgress { get; set; }
+
         private static Dictionary<Type, KeyMapTableInfo> SupportedIdentityTypes
         {
             get 
@@ -152,6 +154,8 @@ namespace SqlIntegration.Library
             Dictionary<string, string> mapForeignKeys = null,
             Action<SqlServerCmd, DataRow> onEachRow = null, IDbTransaction txn = null, int maxRows = 0)
         {
+            var progress = new Progress() { TotalRows = fromDataTable.Rows.Count };
+
             MappingCommand = await SqlServerCmd.FromTableSchemaAsync(connection, Schema, GetTableName(), txn);
             MappingCommand["Schema"] = intoSchema;
             MappingCommand["TableName"] = intoTable;
@@ -160,16 +164,19 @@ namespace SqlIntegration.Library
             MigrateCommand = await SqlServerCmd.FromTableSchemaAsync(connection, intoSchema, intoTable, txn);
             
             await ValidateForeignKeyMappingAsync(connection, mapForeignKeys, txn);
-
-            int rowCount = 0;
+            
             foreach (DataRow dataRow in fromDataTable.Rows)
             {
                 TIdentity sourceId = dataRow.Field<TIdentity>(identityColumn);
-                
-                // if this row has already been copied, then skip
-                if (await IsRowMappedAsync(connection, new DbObject(intoSchema, intoTable), sourceId, txn)) continue;
 
-                if (maxRows > 0 && rowCount > maxRows) break;
+                // if this row has already been copied, then skip
+                if (await IsRowMappedAsync(connection, new DbObject(intoSchema, intoTable), sourceId, txn))
+                {
+                    progress.RowsSkipped++;
+                    continue;
+                }
+
+                if (maxRows > 0 && progress.RowsMigrated > maxRows) break;
 
                 MigrateCommand.BindDataRow(dataRow);
 
@@ -180,7 +187,9 @@ namespace SqlIntegration.Library
                     if (LogMappingException != null)
                     {
                         await LogMappingException.Invoke(connection, mapping.failedColumn, mapping.sourceId, dataRow);
-                    }                    
+                    }
+
+                    progress.RowsSkipped++;
                     continue;
                 }
 
@@ -197,7 +206,11 @@ namespace SqlIntegration.Library
                     if (OnInsertException != null)
                     {
                         var shouldContinue = await OnInsertException.Invoke(connection, dataRow, exc);
-                        if (shouldContinue) continue;
+                        if (shouldContinue)
+                        {
+                            progress.RowsSkipped++;
+                            continue;
+                        }
                     }
 
                     throw new InsertException(dataRow, exc);
@@ -214,10 +227,11 @@ namespace SqlIntegration.Library
                     throw new MappingException<TIdentity>(sourceId, newId, exc);                        
                 }
                
-                rowCount++;
+                progress.RowsMigrated++;
+                OnProgress?.Invoke(progress);
             }
 
-            return rowCount;
+            return progress.RowsMigrated;
         }        
 
         private async Task ValidateForeignKeyMappingAsync(SqlConnection connection, Dictionary<string, string> mapForeignKeys, IDbTransaction txn = null)
@@ -317,7 +331,7 @@ namespace SqlIntegration.Library
             Action<IDbTransaction> onSuccess = null,
             Action<Exception, IDbTransaction> onException = null, int maxRows = 0)
         {
-            var dataTable = await GetSourceDataAsync(fromConnection, fromSchema, fromTable, criteria, parameters);
+            var dataTable = await GetSourceDataAsync(fromConnection, fromSchema, fromTable, criteria, parameters);            
 
             int result = 0;
 
@@ -343,6 +357,14 @@ namespace SqlIntegration.Library
             }
 
             return result;
+        }
+
+        public class Progress
+        {
+            public int TotalRows { get; set; }
+            public int RowsMigrated { get; set; }
+            public int RowsSkipped { get; set; }
+            public int PercentComplete => Convert.ToInt32((Convert.ToDouble(RowsMigrated) / Convert.ToDouble(TotalRows)) * 100f);
         }
     }
 }

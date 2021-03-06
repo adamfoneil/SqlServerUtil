@@ -100,6 +100,19 @@ namespace Testing
             }
         }
 
+        [TestMethod]
+        public void ProgressPercent()
+        {
+            var progress = new []
+            {
+                new { Input = new SqlMigrator<int>.Progress() { TotalRows = 5000, RowsMigrated = 245, RowsSkipped = 13 }, Output = 5 },
+                new { Input = new SqlMigrator<int>.Progress() { TotalRows = 205_343, RowsMigrated = 12_334, RowsSkipped = 233 }, Output = 6 },
+                new { Input = new SqlMigrator<int>.Progress() { TotalRows = 205_343, RowsMigrated = 89_862, RowsSkipped = 487 }, Output = 44 }
+            };
+
+            Assert.IsTrue(progress.All(p => p.Input.PercentComplete == p.Output));
+        }
+
         private void MigrateInner(
             SqlMigrator<int> migrator, SqlConnection cn, object param, 
             Action<IDbTransaction> onSuccess = null, 
