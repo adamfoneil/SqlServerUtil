@@ -9,10 +9,19 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace SqlIntegration.Library
 {
+    public enum InsertExceptionType
+    {
+        PrimaryKeyViolation,
+        UniqueConstraintViolation,
+        ForeignKeyViolation,
+        OtherViolation
+    }
+
     public class SqlMigrator<TIdentity>
     {
         private const string Schema = "migrate";        
@@ -25,7 +34,7 @@ namespace SqlIntegration.Library
 
         public Func<SqlConnection, string, TIdentity, DataRow, Task> LogMappingException { get; set; }
 
-        public Func<SqlConnection, DataRow, Exception, Task<bool>> OnInsertException { get; set; }
+        public Func<SqlConnection, InsertExceptionType, DataRow, Exception, Dictionary<string, object>, Task<bool>> OnInsertException { get; set; }
 
         public Func<Exception, SqlConnection, DbObject, TIdentity, IDbTransaction, Task<TIdentity>> OnMappingException { get; set; }
 
@@ -205,7 +214,8 @@ namespace SqlIntegration.Library
                 {
                     if (OnInsertException != null)
                     {
-                        var shouldContinue = await OnInsertException.Invoke(connection, dataRow, exc);
+                        var exceptionInfo = await GetInsertExceptionInfoAsync(connection, exc, dataRow);
+                        var shouldContinue = await OnInsertException.Invoke(connection, exceptionInfo.exceptionType, dataRow, exc, exceptionInfo.offendingValues);
                         if (shouldContinue)
                         {
                             progress.RowsSkipped++;
@@ -232,7 +242,33 @@ namespace SqlIntegration.Library
             }
 
             return progress.RowsMigrated;
-        }        
+        }
+
+        private async Task<(InsertExceptionType exceptionType, Dictionary<string, object> offendingValues)> GetInsertExceptionInfoAsync(SqlConnection connection, Exception exc, DataRow dataRow)
+        {            
+            var constraintInfo = RegexHelper.ParseQuotedItem(exc.Message, "FOREIGN KEY constraint");
+            if (constraintInfo.isMatch)
+            {
+                var columns = await connection.GetForeignKeyColumnsAsync(constraintInfo.quotedItem);
+                return (InsertExceptionType.ForeignKeyViolation, columns.ToDictionary(col => col, col => dataRow[col]));
+            }
+
+            constraintInfo = RegexHelper.ParseQuotedItem(exc.Message, "PRIMARY KEY constraint");
+            if (constraintInfo.isMatch)
+            { 
+                var columns = await connection.GetKeyColumnsAsync(constraintInfo.quotedItem);
+                return (InsertExceptionType.PrimaryKeyViolation, columns.ToDictionary(col => col, col => dataRow[col]));
+            }
+
+            constraintInfo = RegexHelper.ParseQuotedItem(exc.Message, "UNIQUE constraint");
+            if (constraintInfo.isMatch)
+            {
+                var columns = await connection.GetKeyColumnsAsync(constraintInfo.quotedItem);
+                return (InsertExceptionType.UniqueConstraintViolation, columns.ToDictionary(col => col, col => dataRow[col]));
+            }
+
+            return (InsertExceptionType.OtherViolation, null);
+        }
 
         private async Task ValidateForeignKeyMappingAsync(SqlConnection connection, Dictionary<string, string> mapForeignKeys, IDbTransaction txn = null)
         {

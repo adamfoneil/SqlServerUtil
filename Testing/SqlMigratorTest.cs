@@ -176,6 +176,18 @@ namespace Testing
             return sourceNames.SequenceEqual(newNames);
         }
 
+        [TestMethod]
+        public void RegexTests()
+        {
+            var tests = new[]
+            {
+                new { Message = "FOREIGN KEY constraint \"FK_DropdownValue_Value\"", Cue = "FOREIGN KEY constraint", Output = "FK_DropdownValue_Value" },
+                new { Message = "PRIMARY KEY constraint \"PK_Whatever\"", Cue = "PRIMARY KEY constraint", Output = "PK_Whatever" }
+            };
+
+            tests.All(t => RegexHelper.ParseQuotedItem(t.Message, t.Cue).Equals(t.Output));
+        }
+
         private static void CreateRandomData(SqlConnection cn)
         {
             int suffix = 0;
