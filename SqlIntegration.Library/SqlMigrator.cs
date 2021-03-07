@@ -214,7 +214,7 @@ namespace SqlIntegration.Library
                 {
                     if (OnInsertException != null)
                     {
-                        var exceptionInfo = await GetInsertExceptionInfoAsync(connection, exc, dataRow, txn);
+                        var exceptionInfo = await GetInsertExceptionInfoAsync(connection, exc, MigrateCommand, txn);
                         var shouldContinue = await OnInsertException.Invoke(connection, exceptionInfo.exceptionType, dataRow, exc, exceptionInfo.offendingValues);
                         if (shouldContinue)
                         {
@@ -244,27 +244,27 @@ namespace SqlIntegration.Library
             return progress.RowsMigrated;
         }
 
-        private async Task<(InsertExceptionType exceptionType, Dictionary<string, object> offendingValues)> GetInsertExceptionInfoAsync(SqlConnection connection, Exception exc, DataRow dataRow, IDbTransaction txn = null)
+        private async Task<(InsertExceptionType exceptionType, Dictionary<string, object> offendingValues)> GetInsertExceptionInfoAsync(SqlConnection connection, Exception exc, IDictionary<string, object> cmd, IDbTransaction txn = null)
         {            
             var constraintInfo = RegexHelper.ParseQuotedItem(exc.Message, "FOREIGN KEY constraint");
             if (constraintInfo.isMatch)
             {
                 var columns = await connection.GetForeignKeyColumnsAsync(constraintInfo.quotedItem, txn);
-                return (InsertExceptionType.ForeignKeyViolation, columns.ToDictionary(col => col, col => dataRow[col]));
+                return (InsertExceptionType.ForeignKeyViolation, columns.ToDictionary(col => col, col => cmd[col]));
             }
 
             constraintInfo = RegexHelper.ParseQuotedItem(exc.Message, "PRIMARY KEY constraint");
             if (constraintInfo.isMatch)
             { 
                 var columns = await connection.GetKeyColumnsAsync(constraintInfo.quotedItem, txn);
-                return (InsertExceptionType.PrimaryKeyViolation, columns.ToDictionary(col => col, col => dataRow[col]));
+                return (InsertExceptionType.PrimaryKeyViolation, columns.ToDictionary(col => col, col => cmd[col]));
             }
 
             constraintInfo = RegexHelper.ParseQuotedItem(exc.Message, "UNIQUE constraint");
             if (constraintInfo.isMatch)
             {
                 var columns = await connection.GetKeyColumnsAsync(constraintInfo.quotedItem, txn);
-                return (InsertExceptionType.UniqueConstraintViolation, columns.ToDictionary(col => col, col => dataRow[col]));
+                return (InsertExceptionType.UniqueConstraintViolation, columns.ToDictionary(col => col, col => cmd[col]));
             }
 
             return (InsertExceptionType.OtherViolation, null);
@@ -328,7 +328,7 @@ namespace SqlIntegration.Library
                             if (OnMappingException != null)
                             {
                                 mappedId = await OnMappingException.Invoke(exc, connection, dbObj, sourceId, txn);
-                                if (mappedId.Equals(default)) throw;
+                                if (mappedId.Equals(default(TIdentity))) throw;
                             }
                             else
                             {
