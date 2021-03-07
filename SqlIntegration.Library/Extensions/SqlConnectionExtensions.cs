@@ -2,6 +2,7 @@
 using Dapper.CX.Extensions;
 using Microsoft.Data.SqlClient;
 using System.Collections.Generic;
+using System.Data;
 using System.Threading.Tasks;
 
 namespace SqlIntegration.Library.Extensions
@@ -36,7 +37,7 @@ namespace SqlIntegration.Library.Extensions
         /// <summary>
         /// adapted from https://github.com/adamfoneil/SqlSchema/blob/master/SqlSchema.SqlServer/SqlServerAnalyzer_Tables.cs#L97-L110
         /// </summary>
-        public static async Task<IEnumerable<string>> GetKeyColumnsAsync(this SqlConnection connection, string constraintName) => 
+        public static async Task<IEnumerable<string>> GetKeyColumnsAsync(this SqlConnection connection, string constraintName, IDbTransaction txn = null) => 
             await connection.QueryAsync<string>(
                 @"SELECT
 	                [col].[name]
@@ -46,13 +47,13 @@ namespace SqlIntegration.Library.Extensions
 	                INNER JOIN [sys].[columns] [col] ON [xcol].[object_id]=[col].[object_id] AND [xcol].[column_id]=[col].[column_id]
 	                INNER JOIN [sys].[tables] [t] ON [x].[object_id]=[t].[object_id]
                 WHERE	
-	                [x].[name]=@constraintName", new { constraintName });
+	                [x].[name]=@constraintName", new { constraintName }, txn);
 
 
         /// <summary>
         /// adapted from https://github.com/adamfoneil/SqlSchema/blob/master/SqlSchema.SqlServer/SqlServerAnalyzer_ForeignKeys.cs#L30-L44
         /// </summary>
-        public static async Task<IEnumerable<string>> GetForeignKeyColumnsAsync(this SqlConnection connection, string constraintName) =>
+        public static async Task<IEnumerable<string>> GetForeignKeyColumnsAsync(this SqlConnection connection, string constraintName, IDbTransaction txn = null) =>
             await connection.QueryAsync<string>(
                 @"SELECT						                
 	                [child_col].[name]
@@ -64,6 +65,6 @@ namespace SqlIntegration.Library.Extensions
 		                [child_t].[object_id]=[child_col].[object_id] AND
 		                [fkcol].[parent_column_id]=[child_col].[column_id]
                 WHERE
-	                [fk].[name]=@constraintName", new { constraintName });        
+	                [fk].[name]=@constraintName", new { constraintName }, txn);        
     }
 }

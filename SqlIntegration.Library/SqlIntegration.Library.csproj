@@ -6,13 +6,13 @@
     <Company>Adam O'Neil</Company>
     <Product>SqlServer.Util.Library</Product>
     <Description>A grab bag of SQL Server utilities: BulkInsert, SqlMigrator, and ViewMaterializer</Description>
-    <Version>1.0.16</Version>
+    <Version>1.0.17</Version>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <RepositoryUrl>https://github.com/adamfoneil/SqlServerUtil</RepositoryUrl>
     <PackageProjectUrl>https://github.com/adamfoneil/SqlServerUtil</PackageProjectUrl>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <PackageReleaseNotes>added SqlMigrator.OnProgress callback</PackageReleaseNotes>
-    <AssemblyVersion>1.0.16.0</AssemblyVersion>
+    <PackageReleaseNotes>added insert exception data like offending key values</PackageReleaseNotes>
+    <AssemblyVersion>1.0.17.0</AssemblyVersion>
     <PackageId>SqlServer.Util.Library</PackageId>
     <Copyright>Copyright (c) Adam O'Neil 2020</Copyright>
     <IncludeSymbols>true</IncludeSymbols>
