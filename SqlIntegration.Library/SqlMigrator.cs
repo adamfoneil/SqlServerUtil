@@ -174,7 +174,7 @@ namespace SqlIntegration.Library
             MigrateCommand = await SqlServerCmd.FromTableSchemaAsync(connection, intoSchema, intoTable, txn);
             
             await ValidateForeignKeyMappingAsync(connection, mapForeignKeys, txn);
-            
+                        
             foreach (DataRow dataRow in fromDataTable.Rows)
             {
                 if (cts?.IsCancellationRequested ?? false) break;
@@ -249,7 +249,7 @@ namespace SqlIntegration.Library
             return progress.RowsMigrated;
         }
 
-        private async Task<(InsertExceptionType exceptionType, Dictionary<string, object> offendingValues)> GetInsertExceptionInfoAsync(SqlConnection connection, Exception exc, IDictionary<string, object> cmd, IDbTransaction txn = null)
+        private async Task<(InsertExceptionType exceptionType, Dictionary<string, object> offendingValues)> GetInsertExceptionInfoAsync(SqlConnection connection, Exception exc, SqlServerCmd cmd, IDbTransaction txn = null)
         {            
             var constraintInfo = RegexHelper.ParseQuotedItem(exc.Message, "FOREIGN KEY constraint", QuoteType.Double);
             if (constraintInfo.isMatch)
