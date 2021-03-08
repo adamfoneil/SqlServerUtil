@@ -182,6 +182,7 @@ namespace SqlIntegration.Library
                 if (await IsRowMappedAsync(connection, new DbObject(intoSchema, intoTable), sourceId, txn))
                 {
                     progress.RowsSkipped++;
+                    OnProgress?.Invoke(progress);
                     continue;
                 }
 
@@ -199,6 +200,7 @@ namespace SqlIntegration.Library
                     }
 
                     progress.RowsSkipped++;
+                    OnProgress?.Invoke(progress);
                     continue;
                 }
 
@@ -219,6 +221,7 @@ namespace SqlIntegration.Library
                         if (shouldContinue)
                         {
                             progress.RowsSkipped++;
+                            OnProgress?.Invoke(progress);
                             continue;
                         }
                     }
