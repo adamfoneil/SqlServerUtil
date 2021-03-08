@@ -14,6 +14,7 @@ using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
 using Testing.Models;
+using static SqlIntegration.Library.Extensions.RegexHelper;
 
 namespace Testing
 {
@@ -181,11 +182,11 @@ namespace Testing
         {
             var tests = new[]
             {
-                new { Message = "FOREIGN KEY constraint \"FK_DropdownValue_Value\"", Cue = "FOREIGN KEY constraint", Output = "FK_DropdownValue_Value" },
-                new { Message = "PRIMARY KEY constraint \"PK_Whatever\"", Cue = "PRIMARY KEY constraint", Output = "PK_Whatever" }
+                new { Message = "FOREIGN KEY constraint \"FK_DropdownValue_Value\"", Cue = "FOREIGN KEY constraint", Output = "FK_DropdownValue_Value", QuoteType = QuoteType.Double },
+                new { Message = "PRIMARY KEY constraint 'PK_Whatever'", Cue = "PRIMARY KEY constraint", Output = "PK_Whatever", QuoteType = QuoteType.Single }
             };
 
-            tests.All(t => RegexHelper.ParseQuotedItem(t.Message, t.Cue).Equals(t.Output));
+            tests.All(t => ParseQuotedItem(t.Message, t.Cue, t.QuoteType).Equals(t.Output));
         }
 
         private static void CreateRandomData(SqlConnection cn)

@@ -11,6 +11,7 @@ using System.Data;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using static SqlIntegration.Library.Extensions.RegexHelper;
 
 namespace SqlIntegration.Library
 {
@@ -249,21 +250,21 @@ namespace SqlIntegration.Library
 
         private async Task<(InsertExceptionType exceptionType, Dictionary<string, object> offendingValues)> GetInsertExceptionInfoAsync(SqlConnection connection, Exception exc, IDictionary<string, object> cmd, IDbTransaction txn = null)
         {            
-            var constraintInfo = RegexHelper.ParseQuotedItem(exc.Message, "FOREIGN KEY constraint");
+            var constraintInfo = RegexHelper.ParseQuotedItem(exc.Message, "FOREIGN KEY constraint", QuoteType.Double);
             if (constraintInfo.isMatch)
             {
                 var columns = await connection.GetForeignKeyColumnsAsync(constraintInfo.quotedItem, txn);
                 return (InsertExceptionType.ForeignKeyViolation, columns.ToDictionary(col => col, col => cmd[col]));
             }
 
-            constraintInfo = RegexHelper.ParseQuotedItem(exc.Message, "PRIMARY KEY constraint");
+            constraintInfo = RegexHelper.ParseQuotedItem(exc.Message, "PRIMARY KEY constraint", QuoteType.Single);
             if (constraintInfo.isMatch)
             { 
                 var columns = await connection.GetKeyColumnsAsync(constraintInfo.quotedItem, txn);
                 return (InsertExceptionType.PrimaryKeyViolation, columns.ToDictionary(col => col, col => cmd[col]));
             }
 
-            constraintInfo = RegexHelper.ParseQuotedItem(exc.Message, "UNIQUE constraint");
+            constraintInfo = RegexHelper.ParseQuotedItem(exc.Message, "UNIQUE constraint", QuoteType.Single);
             if (constraintInfo.isMatch)
             {
                 var columns = await connection.GetKeyColumnsAsync(constraintInfo.quotedItem, txn);
@@ -403,7 +404,7 @@ namespace SqlIntegration.Library
             public int TotalRows { get; set; }
             public int RowsMigrated { get; set; }
             public int RowsSkipped { get; set; }
-            public int PercentComplete => Convert.ToInt32((Convert.ToDouble(RowsMigrated) / Convert.ToDouble(TotalRows)) * 100f);
+            public int PercentComplete => Convert.ToInt32((Convert.ToDouble(RowsMigrated + RowsSkipped) / Convert.ToDouble(TotalRows)) * 100f);
         }
     }
 }
