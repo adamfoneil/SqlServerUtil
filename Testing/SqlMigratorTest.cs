@@ -12,7 +12,6 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
-using System.Threading.Tasks;
 using Testing.Models;
 using static SqlIntegration.Library.Extensions.RegexHelper;
 
@@ -33,9 +32,8 @@ namespace Testing
         public void InitializeMigrator()
         {           
             using (var cn = LocalDb.GetConnection(dbName))
-            {
-                var migrator = SqlMigrator<int>.InitializeAsync(cn).Result;
-                Assert.IsTrue(cn.TableExistsAsync(migrator.KeyMapTable).Result);
+            {                
+                Assert.IsTrue(cn.TableExistsAsync(SqlMigrator<int>.KeyMapTable).Result);
             }
         }
 
