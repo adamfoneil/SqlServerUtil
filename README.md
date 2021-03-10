@@ -9,6 +9,7 @@ Nuget package: **SqlServer.Util.Library**
 
 - **SqlMigrator** provides cloning or "deep copy" functionality.\
 [walkthrough](https://github.com/adamosoftware/SqlIntegration/wiki/Using-SqlMigrator) | [source](https://github.com/adamosoftware/SqlIntegration/blob/master/SqlIntegration.Library/SqlMigrator.cs) | [test](https://github.com/adamosoftware/SqlServerUtil/blob/master/Testing/SqlMigratorTest.cs#L42)
+
 My [Zinger](https://github.com/adamfoneil/Postulate.Zinger) project uses this with its [Data Migrator feature](https://github.com/adamfoneil/Postulate.Zinger/wiki/Data-Migrator).
 
 - **ViewMaterializer** provides a way to optimize slow views by leveraging SQL Server change tracking.\
