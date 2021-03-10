@@ -83,9 +83,9 @@ namespace SqlIntegration.Library
             }
         }
 
-        public DbObject KeyMapTable { get { return new DbObject(Schema, GetTableName()); } }
+        public static DbObject KeyMapTable { get { return new DbObject(Schema, GetTableName()); } }
 
-        private static string GetTableName() => GetTableName(out _);
+        public static string GetTableName() => GetTableName(out _);
 
         private static string GetTableName(out KeyMapTableInfo info)
         {
