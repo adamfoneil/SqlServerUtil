@@ -9,6 +9,7 @@ using Microsoft.Data.SqlClient;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Linq.Expressions;
 
 namespace SqlIntegration.Library
 {
@@ -119,6 +120,15 @@ namespace SqlIntegration.Library
         {
             await ExecuteInnerAsync(destConnection, DbObject.Parse(destObject), batchSize, options, sourceData, 0);
         }
+
+        public static async Task ExecuteAsync<T>(IEnumerable<T> sourceData, SqlConnection destConnection, DbObject destObject, 
+            int batchSize, IEnumerable<Expression<Func<T, object>>> columns)
+        {
+            foreach (var mvi in GetMultiValueInserts(destObject, sourceData, batchSize, columns.ToArray()))
+            {
+                await destConnection.ExecuteAsync(mvi.Sql);
+            }
+        }        
 
         public static async Task<StringBuilder> GetSqlStatementsAsync(string intoTable, DataTable dataTable, BulkInsertOptions options = null)
         {
@@ -254,6 +264,74 @@ namespace SqlIntegration.Library
                 InsertStatement = baseCmd,
                 Values = values
             };
+        }
+
+        public static IEnumerable<MultiValueInsert> GetMultiValueInserts<T>(
+            DbObject intoTable, IEnumerable<T> rows, int batchSize, params Expression<Func<T, object>>[] columns)
+        {
+            var columnNames = columns.Select(col => PropertyNameFromLambda(col));
+
+            string baseCmd =
+                $@"INSERT INTO [{intoTable.Schema}].[{intoTable.Name}] (
+                    {string.Join(", ", columnNames.Select(col => $"[{col}]"))}
+                ) VALUES ";
+
+            int skip = 0;                        
+
+            do
+            {
+                var batch = rows.Skip(skip).Take(batchSize);
+                if (!batch.Any()) break;
+
+                var dataTable = batch.ToDataTable();
+                RemoveExtraColumns(dataTable, columnNames);
+
+                List<string> values = new List<string>();
+                foreach (DataRow row in dataTable.Rows)
+                {
+                    values.Add(ValueClause(dataTable.Columns.OfType<DataColumn>(), row));
+                }
+
+                yield return new MultiValueInsert()
+                {
+                    Sql = baseCmd + string.Join(", ", values),
+                    RowsInserted = batch.Count(),
+                    StartRow = skip,
+                    InsertStatement = baseCmd,
+                    Values = values
+                };
+
+                skip += batchSize;
+            } while (true);
+
+            void RemoveExtraColumns(DataTable dataTable, IEnumerable<string> keepColumns)
+            {
+                var removeColumns = dataTable.Columns.OfType<DataColumn>().Select(col => col.ColumnName).Except(keepColumns);
+                foreach (var col in removeColumns) dataTable.Columns.Remove(col);
+            }
+        }
+
+        private static string PropertyNameFromLambda(Expression expression)
+        {
+            // thanks to http://odetocode.com/blogs/scott/archive/2012/11/26/why-all-the-lambdas.aspx
+            // thanks to http://stackoverflow.com/questions/671968/retrieving-property-name-from-lambda-expression
+
+            LambdaExpression le = expression as LambdaExpression;
+            if (le == null) throw new ArgumentException("expression");
+
+            MemberExpression me = null;
+            if (le.Body.NodeType == ExpressionType.Convert)
+            {
+                me = ((UnaryExpression)le.Body).Operand as MemberExpression;
+            }
+            else if (le.Body.NodeType == ExpressionType.MemberAccess)
+            {
+                me = le.Body as MemberExpression;
+            }
+
+            if (me == null) throw new ArgumentException("expression");
+
+            return me.Member.Name;
         }
 
         /// <summary>
