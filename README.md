@@ -1,6 +1,6 @@
 [![Nuget](https://img.shields.io/nuget/v/SqlServer.Util.Library)](https://www.nuget.org/packages/SqlServer.Util.Library/)
 
-This project brings together several utility classes to do some nifty things with SQL Server.
+This project brings together several utility classes to do a few specific things with SQL Server.
 
 Nuget package: **SqlServer.Util.Library**
 
