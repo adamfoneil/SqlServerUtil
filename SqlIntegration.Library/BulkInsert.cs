@@ -122,9 +122,10 @@ namespace SqlIntegration.Library
         }
 
         public static async Task ExecuteAsync<T>(IEnumerable<T> sourceData, SqlConnection destConnection, DbObject destObject, 
-            int batchSize, IEnumerable<Expression<Func<T, object>>> columns)
+            int batchSize, params Expression<Func<T, object>>[] columns)
         {
-            foreach (var mvi in GetMultiValueInserts(destObject, sourceData, batchSize, columns.ToArray()))
+            var inserts = GetMultiValueInserts(destObject, sourceData, batchSize, columns).ToArray();
+            foreach (var mvi in inserts)
             {
                 await destConnection.ExecuteAsync(mvi.Sql);
             }
@@ -306,7 +307,7 @@ namespace SqlIntegration.Library
 
             void RemoveExtraColumns(DataTable dataTable, IEnumerable<string> keepColumns)
             {
-                var removeColumns = dataTable.Columns.OfType<DataColumn>().Select(col => col.ColumnName).Except(keepColumns);
+                var removeColumns = dataTable.Columns.OfType<DataColumn>().Select(col => col.ColumnName).Except(keepColumns).ToArray();
                 foreach (var col in removeColumns) dataTable.Columns.Remove(col);
             }
         }
