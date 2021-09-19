@@ -290,7 +290,7 @@ namespace SqlIntegration.Library
                 List<string> values = new List<string>();
                 foreach (DataRow row in dataTable.Rows)
                 {
-                    values.Add(ValueClause(dataTable.Columns.OfType<DataColumn>(), row));
+                    values.Add(ValueClause(dataTable.Columns.OfType<DataColumn>(), row, columnNames));
                 }
 
                 yield return new MultiValueInsert()
@@ -338,9 +338,25 @@ namespace SqlIntegration.Library
         /// <summary>
         /// Converts values from a data row into a VALUES clause, escaping and delimiting strings where appropriate
         /// </summary>
-        private static string ValueClause(IEnumerable<DataColumn> columns, DataRow dataRow)
+        private static string ValueClause(IEnumerable<DataColumn> columns, DataRow dataRow, IEnumerable<string> columnOrder = null)
         {
-            return "(" + string.Join(", ", columns.Select(col => ToSqlLiteral(col, dataRow))) + ")\r\n";
+            IEnumerable<DataColumn> useColumns = columns;
+
+            if (columnOrder != null)
+            {
+                var useOrder = columnOrder.Select((item, index) => new
+                {
+                    Item = item,
+                    Index = index
+                });
+
+                useColumns = from col in columns
+                             join order in useOrder on col.ColumnName equals order.Item
+                             orderby order.Index
+                             select col;
+            }
+                
+            return "(" + string.Join(", ", useColumns.Select(col => ToSqlLiteral(col, dataRow))) + ")\r\n";
         }
 
         private static string ToSqlLiteral(DataColumn col, DataRow dataRow)
